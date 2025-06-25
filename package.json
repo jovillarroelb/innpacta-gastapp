@@ -1,0 +1,19 @@
+{
+  "name": "control-financiero-app",
+  "version": "1.0.0",
+  "description": "Aplicación web de control financiero personal",
+  "main": "index.html",
+  "scripts": {
+    "start": "node api/index.js",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor", 
+    "version:major": "npm version major",
+    "changelog": "echo '## Changelog' > CHANGELOG.md && git log --oneline --since='1 week ago' >> CHANGELOG.md"
+  },
+  "keywords": ["finanzas", "control", "webapp", "supabase"],
+  "author": "Tu Nombre",
+  "license": "MIT",
+  "dependencies": {
+    "chart.js": "^4.4.0"
+  }
+}
