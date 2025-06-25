@@ -5,10 +5,12 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '..'))); // Sirve archivos estáticos desde la raíz
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -206,6 +208,10 @@ app.get('/api/version', (req, res) => {
             buildDate: new Date().toISOString()
         });
     }
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
 module.exports = app;
