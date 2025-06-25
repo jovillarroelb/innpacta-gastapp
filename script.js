@@ -70,6 +70,10 @@ async function handleAuthPage() {
     const tabRegister = document.getElementById('tab-register');
     const authMessage = document.getElementById('auth-message');
 
+    // Asegura que el tab de Iniciar Sesión esté activo por defecto
+    tabLogin.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+    tabRegister.classList.remove('text-blue-600', 'border-b-2');
+
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
         window.location.replace('/app.html');
@@ -336,6 +340,8 @@ function hideFormMessage() {
 
 async function initializeAppUI() {
     initializeDOMReferences();
+    dom.annualView.classList.add('hidden');
+    dom.monthlyView.classList.remove('hidden');
 
     // Fallbacks seguros para nombres y avatar
     const firstName = currentUserProfile.first_name || (currentUserProfile.email ? currentUserProfile.email.split('@')[0] : 'Usuario');
@@ -407,10 +413,15 @@ async function fetchWithAuth(url, options = {}) {
 }
 
 function switchView(view) {
+    if (view === 'monthly') {
+        dom.monthlyView.classList.remove('hidden');
+        dom.annualView.classList.add('hidden');
+    } else if (view === 'annual') {
+        dom.annualView.classList.remove('hidden');
+        dom.monthlyView.classList.add('hidden');
+    }
     currentView = view;
     dom.loadingIndicator.style.display = 'block';
-    dom.monthlyView.classList.add('hidden');
-    dom.annualView.classList.add('hidden');
     dom.navMonthly.classList.toggle('active', view === 'monthly');
     dom.navAnnual.classList.toggle('active', view === 'annual');
     if (view === 'monthly') {
@@ -941,9 +952,10 @@ async function handleReassignCategory(id, categoryId) {
 }
 
 function openCategoryModal() {
-    const modalContainer = document.getElementById('category-modal');
-    if (!modalContainer) return;
-    modalContainer.innerHTML = `
+    // Elimina cualquier modal previo
+    const prev = document.getElementById('category-modal-bg');
+    if (prev) prev.remove();
+    const html = `
       <div id="category-modal-bg" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem;">
         <div id="category-modal-content" class="w-full max-w-md bg-white rounded-2xl shadow-xl relative overflow-hidden">
           <div class="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white">
@@ -964,37 +976,26 @@ function openCategoryModal() {
           <button id="close-category-modal" class="absolute top-4 right-4 text-2xl text-white hover:text-gray-200 font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">&times;</button>
         </div>
       </div>`;
-    modalContainer.style.opacity = '1';
-    modalContainer.style.pointerEvents = 'auto';
-
+    document.body.insertAdjacentHTML('beforeend', html);
     // Cerrar modal
     document.getElementById('close-category-modal').onclick = closeCategoryModal;
-    // Cierre con click fuera
     document.getElementById('category-modal-bg').onclick = (e) => {
       if (e.target === document.getElementById('category-modal-bg')) closeCategoryModal();
     };
     document.addEventListener('keydown', escCloseCategoryModal);
-
-    // Enfocar input al abrir
     setTimeout(() => {
       const input = document.getElementById('add-category-input');
       if (input) input.focus();
     }, 100);
-
-    // Cargar y renderizar categorías
     renderCategoryList();
-
-    // Agregar nueva categoría
     document.getElementById('add-category-form').onsubmit = async (e) => {
       e.preventDefault();
       const input = document.getElementById('add-category-input');
-      const msg = document.getElementById('category-modal-message');
       let name = input.value.trim();
       if (!name) {
         showCategoryModalMessage('El nombre no puede estar vacío.', 'error');
         return;
       }
-      // Validar unicidad (case-insensitive)
       const { data: existing, error: fetchErr } = await supabase.from('categories').select('name').eq('profile_id', currentUserProfile.id);
       if (fetchErr) {
         showCategoryModalMessage('Error de red. Intenta de nuevo.', 'error');
@@ -1021,14 +1022,9 @@ function openCategoryModal() {
       }
     };
 }
-
 function closeCategoryModal() {
-    const modalContainer = document.getElementById('category-modal');
-    if (modalContainer) {
-      modalContainer.innerHTML = '';
-      modalContainer.style.opacity = '0';
-      modalContainer.style.pointerEvents = 'none';
-    }
+    const bg = document.getElementById('category-modal-bg');
+    if (bg) bg.remove();
     document.removeEventListener('keydown', escCloseCategoryModal);
 }
 function escCloseCategoryModal(e) {
