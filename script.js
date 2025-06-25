@@ -25,7 +25,7 @@ async function initializeFooter() {
     // Obtener versión dinámicamente desde la API
     let appVersion = '1.0.0'; // Versión por defecto
     try {
-        const response = await fetch('/api/version');
+        const response = await fetchWithAuth('/api/version');
         if (response.ok) {
             const versionData = await response.json();
             appVersion = versionData.version;
@@ -426,7 +426,7 @@ function switchView(view) {
 async function fetchDataForCurrentMonth() {
     const monthId = getMonthId(currentMonth);
     try {
-        const res = await fetch(`/api/data/${monthId}`);
+        const res = await fetchWithAuth(`/api/data/${monthId}`);
         if (!res.ok) throw new Error('Error al cargar datos');
         const data = await res.json();
         monthlyAppData = data;
@@ -439,7 +439,7 @@ async function fetchDataForCurrentMonth() {
 
 async function fetchAnnualData() {
     try {
-        const res = await fetch(`/api/annual-summary/${currentYear}`);
+        const res = await fetchWithAuth(`/api/annual-summary/${currentYear}`);
         if (!res.ok) throw new Error('Error al cargar resumen anual');
         const data = await res.json();
         annualData = data;
