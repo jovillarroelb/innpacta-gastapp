@@ -1,7 +1,6 @@
 // Fuerza redeploy - 2024-06-23 17:00
 require('dotenv').config();
 const express = require('express');
-const { Pool } = require('pg');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
@@ -11,8 +10,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..'))); // Sirve archivos estáticos desde la raíz
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // Usamos la Service Key aquí, que está en sus variables de entorno
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -48,15 +45,26 @@ app.get('/api/data/:monthId', async (req, res) => {
     const { monthId } = req.params;
     const userId = req.user.id;
     try {
-        const budgetRes = await pool.query('SELECT amount FROM budgets WHERE user_id = $1 AND month_id = $2', [userId, monthId]);
-        let transactionsRes;
-        try {
-            transactionsRes = await pool.query(`SELECT t._id, t.description, t.amount, t.type, t.category_id, t.comments, c.name as category_name, t.date FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE t.user_id = $1 AND t.month_id = $2 ORDER BY t.date DESC`, [userId, monthId]);
-        } catch (err) {
-            transactionsRes = { rows: [] };
-        }
-        res.status(200).json({ budget: budgetRes.rows.length > 0 ? parseFloat(budgetRes.rows[0].amount) : 0, transactions: transactionsRes.rows });
-    } catch (error) { 
+        // Obtener presupuesto
+        const { data: budgetRows, error: budgetError } = await supabase
+            .from('budgets')
+            .select('amount')
+            .eq('user_id', userId)
+            .eq('month_id', monthId);
+        if (budgetError) throw budgetError;
+        // Obtener transacciones (con nombre de categoría)
+        const { data: transactions, error: txError } = await supabase
+            .from('transactions')
+            .select('*, categories(name)')
+            .eq('user_id', userId)
+            .eq('month_id', monthId)
+            .order('date', { ascending: false });
+        if (txError) throw txError;
+        res.status(200).json({
+            budget: budgetRows && budgetRows.length > 0 ? parseFloat(budgetRows[0].amount) : 0,
+            transactions: transactions || []
+        });
+    } catch (error) {
         console.error(`Error en /api/data/${monthId}: `, error);
         res.status(200).json({ budget: 0, transactions: [] });
     }
@@ -65,10 +73,13 @@ app.get('/api/data/:monthId', async (req, res) => {
 app.post('/api/transactions', async (req, res) => {
     const { description, amount, type, categoryId, date, monthId, comments } = req.body;
     const userId = req.user.id;
-    const query = `INSERT INTO transactions (description, amount, type, category_id, date, month_id, comments, user_id, user_id_legacy) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;`;
     try {
-        const result = await pool.query(query, [description, amount, type, categoryId, date, monthId, comments, userId, userId]);
-        res.status(201).json(result.rows[0]);
+        const { data, error } = await supabase
+            .from('transactions')
+            .insert([{ description, amount, type, category_id: categoryId, date, month_id: monthId, comments, user_id: userId, user_id_legacy: userId }])
+            .select();
+        if (error) throw error;
+        res.status(201).json(data[0]);
     } catch (error) {
         console.error('Error en POST /api/transactions', error);
         res.status(500).json({ message: 'Error al crear la transacción' });
@@ -78,9 +89,12 @@ app.post('/api/transactions', async (req, res) => {
 app.post('/api/budget', async (req, res) => {
     const { monthId, amount } = req.body;
     const userId = req.user.id;
-    const query = `INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3) ON CONFLICT (user_id, month_id) DO UPDATE SET amount = EXCLUDED.amount;`;
     try {
-        await pool.query(query, [userId, monthId, amount]);
+        // UPSERT presupuesto
+        const { error } = await supabase
+            .from('budgets')
+            .upsert([{ user_id: userId, month_id: monthId, amount }], { onConflict: ['user_id', 'month_id'] });
+        if (error) throw error;
         res.status(200).json({ message: "Presupuesto guardado" });
     } catch (error) {
         console.error('Error en POST /api/budget', error);
@@ -95,9 +109,15 @@ app.patch('/api/transactions/:id/details', async (req, res) => {
         return res.status(400).json({ message: 'La descripción es requerida.' });
     }
     try {
-        const result = await pool.query('UPDATE transactions SET description = $1, comments = $2 WHERE _id = $3 AND user_id = $4 RETURNING *', [description, comments, id, req.user.id]);
-        if (result.rowCount === 0) return res.status(404).json({ message: 'Transacción no encontrada.' });
-        res.status(200).json(result.rows[0]);
+        const { data, error } = await supabase
+            .from('transactions')
+            .update({ description, comments })
+            .eq('_id', id)
+            .eq('user_id', req.user.id)
+            .select();
+        if (error) throw error;
+        if (!data || data.length === 0) return res.status(404).json({ message: 'Transacción no encontrada.' });
+        res.status(200).json(data[0]);
     } catch (error) {
         console.error(`Error en PATCH /api/transactions/${id}/details`, error);
         res.status(500).json({ message: 'Error al actualizar la transacción.' });
@@ -108,10 +128,15 @@ app.get('/api/categories', async (req, res) => {
     const profileId = getProfileId(req);
     if (!profileId) return res.status(401).json({ message: 'No autorizado' });
     try {
-        const result = await pool.query('SELECT id, name FROM categories WHERE profile_id = $1 ORDER BY name ASC', [profileId]);
-        res.status(200).json(result.rows);
-    } catch (error) { 
-        res.status(500).json({ message: 'Error al obtener categorías' }); 
+        const { data, error } = await supabase
+            .from('categories')
+            .select('id, name')
+            .eq('profile_id', profileId)
+            .order('name', { ascending: true });
+        if (error) throw error;
+        res.status(200).json(data);
+    } catch (error) {
+        res.status(500).json({ message: 'Error al obtener categorías' });
     }
 });
 
@@ -120,9 +145,13 @@ app.post('/api/categories', async (req, res) => {
     const { name } = req.body;
     if (!profileId) return res.status(401).json({ message: 'No autorizado' });
     try {
-        const result = await pool.query('INSERT INTO categories (name, profile_id) VALUES ($1, $2) ON CONFLICT (name, profile_id) DO NOTHING RETURNING *', [name, profileId]);
-        if (result.rows.length === 0) return res.status(409).json({ message: 'La categoría ya existe' });
-        res.status(201).json(result.rows[0]);
+        const { data, error } = await supabase
+            .from('categories')
+            .insert([{ name, profile_id: profileId }])
+            .select();
+        if (error && error.code === '23505') return res.status(409).json({ message: 'La categoría ya existe' });
+        if (error) throw error;
+        res.status(201).json(data[0]);
     } catch (error) {
         res.status(500).json({ message: 'Error al crear la categoría' });
     }
@@ -133,9 +162,19 @@ app.delete('/api/categories/:id', async (req, res) => {
     const { id } = req.params;
     if (!profileId) return res.status(401).json({ message: 'No autorizado' });
     try {
-        await pool.query('UPDATE transactions SET category_id = NULL WHERE category_id = $1', [id]);
-        const result = await pool.query('DELETE FROM categories WHERE id = $1 AND profile_id = $2', [id, profileId]);
-        if (result.rowCount === 0) return res.status(404).json({ message: "Categoría no encontrada" });
+        // Primero, actualiza transacciones para quitar la categoría
+        await supabase
+            .from('transactions')
+            .update({ category_id: null })
+            .eq('category_id', id);
+        // Luego, elimina la categoría
+        const { error, count } = await supabase
+            .from('categories')
+            .delete()
+            .eq('id', id)
+            .eq('profile_id', profileId);
+        if (error) throw error;
+        if (count === 0) return res.status(404).json({ message: "Categoría no encontrada" });
         res.status(200).json({ message: "Categoría eliminada" });
     } catch (error) {
         res.status(500).json({ message: 'Error al eliminar la categoría' });
@@ -145,8 +184,14 @@ app.delete('/api/categories/:id', async (req, res) => {
 app.delete('/api/transactions/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query('DELETE FROM transactions WHERE _id = $1 AND user_id = $2', [id, req.user.id]);
-        if (result.rowCount === 0) return res.status(404).json({ message: "Transacción no encontrada" });
+        const { data, error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('_id', id)
+            .eq('user_id', req.user.id)
+            .select();
+        if (error) throw error;
+        if (!data || data.length === 0) return res.status(404).json({ message: "Transacción no encontrada" });
         res.status(200).json({ message: "Transacción eliminada" });
     } catch (error) {
         res.status(500).json({ message: 'Error al eliminar la transacción' });
@@ -158,9 +203,15 @@ app.patch('/api/transactions/:id/category', async (req, res) => {
     const { categoryId } = req.body;
     if (categoryId === undefined) return res.status(400).json({ message: 'Se requiere el ID de la categoría.' });
     try {
-        const result = await pool.query('UPDATE transactions SET category_id = $1 WHERE _id = $2 AND user_id = $3 RETURNING *', [categoryId, id, req.user.id]);
-        if (result.rowCount === 0) return res.status(404).json({ message: 'Transacción no encontrada.' });
-        res.status(200).json(result.rows[0]);
+        const { data, error } = await supabase
+            .from('transactions')
+            .update({ category_id: categoryId })
+            .eq('_id', id)
+            .eq('user_id', req.user.id)
+            .select();
+        if (error) throw error;
+        if (!data || data.length === 0) return res.status(404).json({ message: 'Transacción no encontrada.' });
+        res.status(200).json(data[0]);
     } catch (error) {
         res.status(500).json({ message: 'Error al actualizar la categoría de la transacción.' });
     }
@@ -171,17 +222,33 @@ app.get('/api/annual-summary/:year', async (req, res) => {
     const userId = req.user.id;
     if (isNaN(year)) return res.status(400).json({ message: 'El año proporcionado no es válido.' });
     try {
-        const expensesQuery = `SELECT to_char(date, 'YYYY-MM') as month, SUM(amount) as total_expenses FROM transactions WHERE user_id = $1 AND type = 'expense' AND to_char(date, 'YYYY') = $2 GROUP BY month ORDER BY month;`;
-        const expensesRes = await pool.query(expensesQuery, [userId, year]);
-        const budgetsQuery = `SELECT month_id as month, amount as budget_amount FROM budgets WHERE user_id = $1 AND month_id LIKE $2 ORDER BY month;`;
-        const budgetsRes = await pool.query(budgetsQuery, [userId, `${year}%`]);
+        // Obtiene todos los gastos del año agrupados por mes
+        const { data: expenses, error: expError } = await supabase
+            .from('transactions')
+            .select('amount, date')
+            .eq('user_id', userId)
+            .eq('type', 'expense');
+        if (expError) throw expError;
+        // Obtiene todos los presupuestos del año
+        const { data: budgets, error: budError } = await supabase
+            .from('budgets')
+            .select('month_id, amount')
+            .eq('user_id', userId)
+            .like('month_id', `${year}%`);
+        if (budError) throw budError;
+        // Procesa los datos para devolver el resumen mensual
         const monthlyData = {};
         for (let i = 1; i <= 12; i++) {
             const monthStr = `${year}-${String(i).padStart(2, '0')}`;
             monthlyData[monthStr] = { month: monthStr, totalExpenses: 0, budget: 0 };
         }
-        expensesRes.rows.forEach(row => { if (monthlyData[row.month]) monthlyData[row.month].totalExpenses = parseFloat(row.total_expenses); });
-        budgetsRes.rows.forEach(row => { if (monthlyData[row.month]) monthlyData[row.month].budget = parseFloat(row.budget_amount); });
+        expenses.forEach(row => {
+            const month = row.date.slice(0, 7);
+            if (monthlyData[month]) monthlyData[month].totalExpenses += parseFloat(row.amount);
+        });
+        budgets.forEach(row => {
+            if (monthlyData[row.month_id]) monthlyData[row.month_id].budget = parseFloat(row.amount);
+        });
         res.status(200).json(Object.values(monthlyData));
     } catch (error) {
         res.status(500).json({ message: 'Error al obtener el resumen anual' });
