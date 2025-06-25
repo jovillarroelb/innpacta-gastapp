@@ -408,10 +408,15 @@ async function getCategories() {
             .select('*')
             .eq('user_id', session.user.id)
             .order('name');
-        if (error) throw error;
+        if (error) {
+            console.error('Error Supabase getCategories:', error);
+            throw error;
+        }
+        console.log('Categorías obtenidas para usuario', session.user.id, data);
         return data || [];
     } catch (error) {
         console.error('Error al obtener categorías:', error);
+        showNotification('Error al obtener categorías', 'error');
         return [];
     }
 }
@@ -626,8 +631,10 @@ function renderCharts(data) {
 // Función para mostrar modal de categorías
 function showCategoryModal() {
     const modal = document.getElementById('category-modal');
-    if (!modal) return;
-    
+    if (!modal) {
+        console.error('No se encontró el modal de categorías');
+        return;
+    }
     modal.innerHTML = `
         <div class="modal-content">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Gestionar Categorías</h3>
@@ -646,7 +653,6 @@ function showCategoryModal() {
             </form>
         </div>
     `;
-    
     modal.classList.remove('hidden');
     loadCategoriesList();
     setupCategoryForm();
@@ -663,15 +669,16 @@ function hideCategoryModal() {
 // Función para cargar lista de categorías en el modal
 async function loadCategoriesList() {
     const container = document.getElementById('categories-list');
-    if (!container) return;
-    
+    if (!container) {
+        console.error('No se encontró el contenedor de la lista de categorías');
+        return;
+    }
     try {
         const categories = await getCategories();
-        if (categories.length === 0) {
+        if (!categories || categories.length === 0) {
             container.innerHTML = '<p class="text-gray-500 text-center py-4">No hay categorías definidas</p>';
             return;
         }
-        
         container.innerHTML = categories.map(category => `
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2">
                 <span class="font-medium text-gray-800">${category.name}</span>
@@ -682,8 +689,9 @@ async function loadCategoriesList() {
                 </button>
             </div>
         `).join('');
+        console.log('Lista de categorías renderizada:', categories);
     } catch (error) {
-        console.error('Error al cargar categorías:', error);
+        console.error('Error al cargar categorías en el modal:', error);
         container.innerHTML = '<p class="text-red-500 text-center py-4">Error al cargar categorías</p>';
     }
 }
