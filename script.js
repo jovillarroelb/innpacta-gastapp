@@ -569,7 +569,7 @@ function renderExpensesChart(transactions) {
     const expenses = transactions.filter(t => t.type === 'expense');
     const dataByCategory = {};
     expenses.forEach(t => {
-        const cat = t.category_name || 'Sin categoría';
+        const cat = (t.categories && t.categories.name) || t.category_name || 'Sin categoría';
         dataByCategory[cat] = (dataByCategory[cat] || 0) + parseFloat(t.amount);
     });
     const labels = Object.keys(dataByCategory);
@@ -649,7 +649,7 @@ function renderIncomesChart(transactions) {
     const incomes = transactions.filter(t => t.type === 'income');
     const dataByCategory = {};
     incomes.forEach(t => {
-        const cat = t.category_name || 'Sin categoría';
+        const cat = (t.categories && t.categories.name) || t.category_name || 'Sin categoría';
         dataByCategory[cat] = (dataByCategory[cat] || 0) + parseFloat(t.amount);
     });
     const labels = Object.keys(dataByCategory);
