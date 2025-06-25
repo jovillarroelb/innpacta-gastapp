@@ -958,18 +958,18 @@ function openCategoryModal() {
     const html = `
       <div id="category-modal-bg" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem;">
         <div id="category-modal-content" class="w-full max-w-md bg-white rounded-2xl shadow-xl relative overflow-hidden">
-          <div class="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white">
+          <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
             <h2 class="text-xl font-bold">Gestionar Categorías</h2>
-            <p class="text-green-100 text-sm mt-1">Agrega o elimina categorías para organizar tus transacciones</p>
+            <p class="text-blue-100 text-sm mt-1">Agrega o elimina categorías para organizar tus transacciones</p>
           </div>
           <div class="p-6">
             <div id="category-list-container" class="mb-6 max-h-60 overflow-y-auto custom-scrollbar border border-gray-200 rounded-lg p-3 bg-gray-50"></div>
             <form id="add-category-form" class="flex gap-3 mb-4">
               <div class="flex-1 relative">
                 <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">📁</span>
-                <input id="add-category-input" type="text" class="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors" placeholder="Nueva categoría" required autocomplete="off" />
+                <input id="add-category-input" type="text" class="w-full pl-10 pr-3 py-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Nueva categoría" required autocomplete="off" />
               </div>
-              <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors whitespace-nowrap">Agregar</button>
+              <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors whitespace-nowrap">Agregar</button>
             </form>
             <div id="category-modal-message" class="text-sm min-h-[1.5em] px-3 py-2 rounded-lg"></div>
           </div>
@@ -977,7 +977,6 @@ function openCategoryModal() {
         </div>
       </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
-    // Cerrar modal
     document.getElementById('close-category-modal').onclick = closeCategoryModal;
     document.getElementById('category-modal-bg').onclick = (e) => {
       if (e.target === document.getElementById('category-modal-bg')) closeCategoryModal();
@@ -1012,7 +1011,9 @@ function openCategoryModal() {
         if (error) throw error;
         input.value = '';
         showCategoryModalMessage('¡Categoría agregada exitosamente!', 'success');
+        categoriesCache = null;
         await fetchCategories();
+        updateCategoryUI();
         await renderCategoryList();
       } catch (err) {
         showCategoryModalMessage('No se pudo agregar la categoría.', 'error');
@@ -1085,7 +1086,9 @@ async function renderCategoryList() {
             showCategoryModalMessage('No se pudo eliminar la categoría: ' + error.message, 'error');
             return;
           }
+          categoriesCache = null;
           await fetchCategories();
+          updateCategoryUI();
           renderCategoryList();
           showCategoryModalMessage('Categoría eliminada exitosamente', 'success');
         }
