@@ -846,6 +846,21 @@ async function logout() {
     }
 }
 
+function populateYearSelector() {
+  const yearSelector = document.getElementById('year-selector');
+  if (!yearSelector) return;
+  yearSelector.innerHTML = '';
+  for (let year = 2025; year <= 2030; year++) {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    yearSelector.appendChild(option);
+  }
+  // Selecciona el año actual si está en el rango, si no selecciona 2025
+  const current = (new Date()).getFullYear();
+  yearSelector.value = (current >= 2025 && current <= 2030) ? current : 2025;
+}
+
 // Función para inicializar la aplicación principal
 async function initializeApp() {
     console.log('🚀 Inicializando aplicación...');
@@ -870,6 +885,7 @@ async function initializeApp() {
         if (userAvatar) userAvatar.textContent = (currentUser.user_metadata?.first_name || currentUser.email).charAt(0).toUpperCase();
         
         // Configurar controles de fecha
+        populateYearSelector();
         const currentMonthDisplay = document.getElementById('current-month-display');
         if (currentMonthDisplay) currentMonthDisplay.textContent = displayMonth(new Date(currentYear, currentMonth));
         
