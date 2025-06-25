@@ -132,3 +132,19 @@ function renderTables(data) {
         categoriesBody.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-slate-500">No hay categorías.</td></tr>';
     }
 }
+
+// Ejemplo para un formulario:
+const forms = document.querySelectorAll('form');
+forms.forEach(form => {
+  form.addEventListener('submit', e => e.preventDefault());
+});
+
+// Después de agregar/eliminar categoría o presupuesto:
+function refreshCategoriesUI() {
+  // Lógica para volver a renderizar el selector/lista de categorías
+}
+function refreshBudgetsUI() {
+  // Lógica para volver a renderizar la lista de presupuestos
+}
+
+// Llama a estas funciones tras agregar/eliminar
