@@ -522,7 +522,8 @@ function renderTransactionList(transactions) {
         const transactionDate = new Date(t.date);
         const day = String(transactionDate.getUTCDate()).padStart(2, '0');
         const month = transactionDate.toLocaleDateString('es-ES', { month: 'short' });
-        const categoryName = t.category_name || 'Sin categoría';
+        // Corrección: usa el nombre de la categoría desde el join, o el campo directo, o fallback
+        const categoryName = (t.categories && t.categories.name) || t.category_name || 'Sin categoría';
         const comments = t.comments || '';
 
         itemEl.className = 'flex flex-col gap-2 p-4 sm:p-2 sm:gap-1 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100 bg-white shadow-sm';
