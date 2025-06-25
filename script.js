@@ -944,8 +944,8 @@ function openCategoryModal() {
     const modalContainer = document.getElementById('category-modal');
     if (!modalContainer) return;
     modalContainer.innerHTML = `
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" id="category-modal-bg">
-        <div class="bg-white rounded-2xl shadow-xl min-w-[320px] max-w-[90vw] w-full relative overflow-hidden" id="category-modal-content">
+      <div id="category-modal-bg" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem;">
+        <div id="category-modal-content" class="w-full max-w-md bg-white rounded-2xl shadow-xl relative overflow-hidden">
           <div class="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white">
             <h2 class="text-xl font-bold">Gestionar Categorías</h2>
             <p class="text-green-100 text-sm mt-1">Agrega o elimina categorías para organizar tus transacciones</p>
@@ -963,8 +963,7 @@ function openCategoryModal() {
           </div>
           <button id="close-category-modal" class="absolute top-4 right-4 text-2xl text-white hover:text-gray-200 font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">&times;</button>
         </div>
-      </div>
-    `;
+      </div>`;
     modalContainer.style.opacity = '1';
     modalContainer.style.pointerEvents = 'auto';
 
