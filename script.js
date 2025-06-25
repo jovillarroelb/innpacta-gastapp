@@ -82,7 +82,7 @@ async function initializeFooter() {
 
 // Mejora en la inicialización de la app
 document.addEventListener('DOMContentLoaded', () => {
-    // Forzar ocultar todos los modales al cargar
+    // Forzar ocultar todos los modales al cargar (solo si existen)
     ['category-modal', 'reassign-modal', 'edit-transaction-modal'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
@@ -97,6 +97,21 @@ document.addEventListener('DOMContentLoaded', () => {
     } 
     // Si encuentra el contenedor de la app, ejecuta la lógica de la aplicación principal.
     else if (document.getElementById('app-container')) {
+        // Definir funciones de modales SOLO en la app principal
+        window.setupModalCloseEvents = function(modalId, closeFn) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            function escListener(e) { if (e.key === 'Escape') closeFn(); }
+            function clickListener(e) { if (e.target === modal) closeFn(); }
+            document.addEventListener('keydown', escListener);
+            modal.addEventListener('mousedown', clickListener);
+            modal._cleanup = () => {
+                document.removeEventListener('keydown', escListener);
+                modal.removeEventListener('mousedown', clickListener);
+            };
+        };
+        window.showCategoryModal = showCategoryModal;
+        window.hideCategoryModal = hideCategoryModal;
         handleAppPage();
     }
 });
