@@ -303,7 +303,8 @@ function debounceRefresh(func, delay = 300) {
 async function refreshCategoriesUI() {
     try {
         showLoading('categories-loading', true);
-        const categories = await getCategories();
+        let categories = await getCategories();
+        categories = categories.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
         renderCategorySelector(categories);
         renderCategoryList(categories);
     } catch (error) {
@@ -628,7 +629,28 @@ function renderCharts(data) {
     }
 }
 
-// Función para mostrar modal de categorías
+// --- MODALES: Cierre con ESC y click fuera ---
+function setupModalCloseEvents(modalId, closeFn) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  // Cerrar con ESC
+  function escListener(e) {
+    if (e.key === 'Escape') closeFn();
+  }
+  // Cerrar con click fuera
+  function clickListener(e) {
+    if (e.target === modal) closeFn();
+  }
+  document.addEventListener('keydown', escListener);
+  modal.addEventListener('mousedown', clickListener);
+  // Limpiar listeners al cerrar
+  modal._cleanup = () => {
+    document.removeEventListener('keydown', escListener);
+    modal.removeEventListener('mousedown', clickListener);
+  };
+}
+
+// --- MODAL DE CATEGORÍAS ---
 function showCategoryModal() {
     const modal = document.getElementById('category-modal');
     if (!modal) {
@@ -640,13 +662,13 @@ function showCategoryModal() {
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Gestionar Categorías</h3>
             <div id="categories-list" class="mb-4 max-h-60 overflow-y-auto"></div>
             <form id="add-category-form" class="space-y-3">
-                <input type="text" id="new-category-name" placeholder="Nombre de la categoría" 
+                <input type="text" id="new-category-name" placeholder="Nueva Categoría" 
                        class="w-full px-4 py-2 bg-gray-100 border-transparent rounded-lg" required>
                 <div class="flex space-x-2">
                     <button type="submit" class="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition">
                         Agregar Categoría
                     </button>
-                    <button type="button" onclick="hideCategoryModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">
+                    <button type="button" id="close-category-modal-btn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">
                         Cerrar
                     </button>
                 </div>
@@ -656,17 +678,21 @@ function showCategoryModal() {
     modal.classList.remove('hidden');
     loadCategoriesList();
     setupCategoryForm();
+    // Cierre con ESC y click fuera
+    setupModalCloseEvents('category-modal', hideCategoryModal);
+    // Cierre con botón
+    document.getElementById('close-category-modal-btn').onclick = hideCategoryModal;
 }
 
-// Función para ocultar modal de categorías
 function hideCategoryModal() {
     const modal = document.getElementById('category-modal');
     if (modal) {
         modal.classList.add('hidden');
+        if (modal._cleanup) modal._cleanup();
     }
 }
 
-// Función para cargar lista de categorías en el modal
+// --- ORDEN ALFABÉTICO Y REFRESCO DE SELECTOR ---
 async function loadCategoriesList() {
     const container = document.getElementById('categories-list');
     if (!container) {
@@ -674,11 +700,14 @@ async function loadCategoriesList() {
         return;
     }
     try {
-        const categories = await getCategories();
+        let categories = await getCategories();
         if (!categories || categories.length === 0) {
             container.innerHTML = '<p class="text-gray-500 text-center py-4">No hay categorías definidas</p>';
+            renderCategorySelector([]); // Refresca el selector vacío
             return;
         }
+        // Ordena alfabéticamente
+        categories = categories.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
         container.innerHTML = categories.map(category => `
             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2">
                 <span class="font-medium text-gray-800">${category.name}</span>
@@ -689,10 +718,27 @@ async function loadCategoriesList() {
                 </button>
             </div>
         `).join('');
+        renderCategorySelector(categories); // Refresca el selector
         console.log('Lista de categorías renderizada:', categories);
     } catch (error) {
         console.error('Error al cargar categorías en el modal:', error);
         container.innerHTML = '<p class="text-red-500 text-center py-4">Error al cargar categorías</p>';
+    }
+}
+
+// --- REFRESCO DEL SELECTOR TRAS AGREGAR/ELIMINAR ---
+async function refreshCategoriesUI() {
+    try {
+        showLoading('categories-loading', true);
+        let categories = await getCategories();
+        categories = categories.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
+        renderCategorySelector(categories);
+        renderCategoryList(categories);
+    } catch (error) {
+        console.error('Error al refrescar categorías:', error);
+        showNotification('Error al cargar categorías', 'error');
+    } finally {
+        showLoading('categories-loading', false);
     }
 }
 
