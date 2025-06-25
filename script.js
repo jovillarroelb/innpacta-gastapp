@@ -398,17 +398,16 @@ async function getCurrentUser() {
     }
 }
 
-// Función para obtener categorías
+// Función para obtener categorías por usuario
 async function getCategories() {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No hay sesión activa');
-        
         const { data, error } = await supabase
             .from('categories')
             .select('*')
+            .eq('user_id', session.user.id)
             .order('name');
-            
         if (error) throw error;
         return data || [];
     } catch (error) {
@@ -718,24 +717,21 @@ function setupCategoryForm() {
     });
 }
 
-// Función para eliminar categoría
+// Función para eliminar categoría por usuario
 async function deleteCategory(categoryId) {
     if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
-    
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No hay sesión activa');
-        
         const { error } = await supabase
             .from('categories')
             .delete()
-            .eq('id', categoryId);
-            
+            .eq('id', categoryId)
+            .eq('user_id', session.user.id);
         if (error) throw error;
-        
         showNotification('Categoría eliminada exitosamente', 'success');
-        await loadCategoriesList();
         await refreshCategoriesUI();
+        await loadCategoriesList();
     } catch (error) {
         console.error('Error al eliminar categoría:', error);
         showNotification('Error al eliminar categoría', 'error');
@@ -814,25 +810,18 @@ async function addTransaction(transactionData) {
     }
 }
 
-// Función para agregar categoría
+// Función para agregar categoría por usuario
 async function addCategory(categoryData) {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No hay sesión activa');
-        
         const { data, error } = await supabase
             .from('categories')
-            .insert([{
-                user_id: session.user.id,
-                name: categoryData.name
-            }])
+            .insert([{ name: categoryData.name, user_id: session.user.id }])
             .select();
-            
         if (error) throw error;
-        
         showNotification('Categoría agregada exitosamente', 'success');
         await refreshCategoriesUI();
-        
         return data[0];
     } catch (error) {
         console.error('Error al agregar categoría:', error);
