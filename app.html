@@ -79,8 +79,18 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 order-3">
                         <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-                                <div><h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Gastos por Categoría</h3><div id="expenses-chart-wrapper" class="h-80 relative"></div></div>
-                                <div><h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Ingresos por Categoría</h3><div id="income-chart-wrapper" class="h-80 relative"></div></div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Gastos por Categoría</h3>
+                                    <div id="expenses-chart-wrapper" class="h-80 relative">
+                                        <canvas id="expenses-chart"></canvas>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Ingresos por Categoría</h3>
+                                    <div id="income-chart-wrapper" class="h-80 relative">
+                                        <canvas id="income-chart"></canvas>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

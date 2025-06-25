@@ -485,16 +485,36 @@ function renderTransactionList(transactions) {
     }
     
     container.innerHTML = transactions.map(transaction => `
-        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-3">
             <div class="flex-1">
                 <h4 class="font-semibold text-gray-800">${transaction.description}</h4>
                 <p class="text-sm text-gray-500">${transaction.categories?.name || 'Sin categoría'}</p>
+                ${transaction.comments ? `<p class="text-xs text-gray-400 mt-1">${transaction.comments}</p>` : ''}
             </div>
-            <div class="text-right">
-                <p class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
-                    ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
-                </p>
-                <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
+            <div class="text-right flex items-center">
+                <div class="mr-3">
+                    <p class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                        ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
+                    </p>
+                    <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
+                </div>
+                <div class="flex space-x-1">
+                    <button class="btn-action btn-edit" onclick="editTransaction(${transaction.id})" title="Editar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </button>
+                    <button class="btn-action btn-category" onclick="reassignCategory(${transaction.id})" title="Cambiar categoría">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                        </svg>
+                    </button>
+                    <button class="btn-action btn-delete" onclick="deleteTransaction(${transaction.id})" title="Eliminar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     `).join('');
@@ -541,7 +561,215 @@ async function getChartData() {
 
 // Función para renderizar gráficos
 function renderCharts(data) {
-    console.log('Datos de gráficos:', data);
+    console.log('📊 Renderizando gráficos con datos:', data);
+    
+    // Gráfico de gastos por categoría
+    const expensesCtx = document.getElementById('expenses-chart');
+    if (expensesCtx && Object.keys(data.expenses).length > 0) {
+        new Chart(expensesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(data.expenses),
+                datasets: [{
+                    data: Object.values(data.expenses),
+                    backgroundColor: [
+                        '#ef4444', '#f97316', '#eab308', '#84cc16',
+                        '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Gráfico de ingresos por categoría
+    const incomeCtx = document.getElementById('income-chart');
+    if (incomeCtx && Object.keys(data.income).length > 0) {
+        new Chart(incomeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(data.income),
+                datasets: [{
+                    data: Object.values(data.income),
+                    backgroundColor: [
+                        '#10b981', '#059669', '#047857', '#065f46',
+                        '#064e3b', '#022c22', '#042f2e', '#0f766e'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Función para mostrar modal de categorías
+function showCategoryModal() {
+    const modal = document.getElementById('category-modal');
+    if (!modal) return;
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Gestionar Categorías</h3>
+            <div id="categories-list" class="mb-4 max-h-60 overflow-y-auto"></div>
+            <form id="add-category-form" class="space-y-3">
+                <input type="text" id="new-category-name" placeholder="Nombre de la categoría" 
+                       class="w-full px-4 py-2 bg-gray-100 border-transparent rounded-lg" required>
+                <div class="flex space-x-2">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition">
+                        Agregar Categoría
+                    </button>
+                    <button type="button" onclick="hideCategoryModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">
+                        Cerrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    loadCategoriesList();
+    setupCategoryForm();
+}
+
+// Función para ocultar modal de categorías
+function hideCategoryModal() {
+    const modal = document.getElementById('category-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Función para cargar lista de categorías en el modal
+async function loadCategoriesList() {
+    const container = document.getElementById('categories-list');
+    if (!container) return;
+    
+    try {
+        const categories = await getCategories();
+        if (categories.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No hay categorías definidas</p>';
+            return;
+        }
+        
+        container.innerHTML = categories.map(category => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2">
+                <span class="font-medium text-gray-800">${category.name}</span>
+                <button onclick="deleteCategory(${category.id})" class="text-red-500 hover:text-red-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error al cargar categorías:', error);
+        container.innerHTML = '<p class="text-red-500 text-center py-4">Error al cargar categorías</p>';
+    }
+}
+
+// Función para configurar formulario de categorías
+function setupCategoryForm() {
+    const form = document.getElementById('add-category-form');
+    if (!form) return;
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const nameInput = document.getElementById('new-category-name');
+        const name = nameInput.value.trim();
+        
+        if (!name) {
+            showNotification('Por favor ingresa un nombre para la categoría', 'error');
+            return;
+        }
+        
+        try {
+            await addCategory({ name });
+            nameInput.value = '';
+            await loadCategoriesList();
+            await refreshCategoriesUI();
+            showNotification('Categoría agregada exitosamente', 'success');
+        } catch (error) {
+            console.error('Error al agregar categoría:', error);
+            showNotification('Error al agregar categoría', 'error');
+        }
+    });
+}
+
+// Función para eliminar categoría
+async function deleteCategory(categoryId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
+    
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No hay sesión activa');
+        
+        const { error } = await supabase
+            .from('categories')
+            .delete()
+            .eq('id', categoryId);
+            
+        if (error) throw error;
+        
+        showNotification('Categoría eliminada exitosamente', 'success');
+        await loadCategoriesList();
+        await refreshCategoriesUI();
+    } catch (error) {
+        console.error('Error al eliminar categoría:', error);
+        showNotification('Error al eliminar categoría', 'error');
+    }
+}
+
+// Función para editar transacción
+function editTransaction(transactionId) {
+    // Implementar modal de edición de transacción
+    showNotification('Funcionalidad de edición en desarrollo', 'info');
+}
+
+// Función para reasignar categoría
+function reassignCategory(transactionId) {
+    // Implementar modal de reasignación de categoría
+    showNotification('Funcionalidad de reasignación en desarrollo', 'info');
+}
+
+// Función para eliminar transacción
+async function deleteTransaction(transactionId) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta transacción?')) return;
+    
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No hay sesión activa');
+        
+        const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', transactionId);
+            
+        if (error) throw error;
+        
+        showNotification('Transacción eliminada exitosamente', 'success');
+        await refreshTransactionsUI();
+        await refreshChartsUI();
+    } catch (error) {
+        console.error('Error al eliminar transacción:', error);
+        showNotification('Error al eliminar transacción', 'error');
+    }
 }
 
 // Función para agregar transacción
@@ -725,7 +953,7 @@ function setupEventListeners() {
     if (manageCategoriesBtn) {
         console.log('✅ Botón de gestión de categorías encontrado');
         manageCategoriesBtn.addEventListener('click', () => {
-            showNotification('Funcionalidad de categorías en desarrollo', 'info');
+            showCategoryModal();
         });
     } else {
         console.log('❌ Botón de gestión de categorías no encontrado');
