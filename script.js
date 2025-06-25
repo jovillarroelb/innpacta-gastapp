@@ -741,22 +741,6 @@ async function loadCategoriesList() {
     }
 }
 
-// --- REFRESCO DEL SELECTOR TRAS AGREGAR/ELIMINAR ---
-async function refreshCategoriesUI() {
-    try {
-        showLoading('categories-loading', true);
-        let categories = await getCategories();
-        categories = categories.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
-        renderCategorySelector(categories);
-        renderCategoryList(categories);
-    } catch (error) {
-        console.error('Error al refrescar categorías:', error);
-        showNotification('Error al cargar categorías', 'error');
-    } finally {
-        showLoading('categories-loading', false);
-    }
-}
-
 // Función para configurar formulario de categorías
 function setupCategoryForm() {
     const form = document.getElementById('add-category-form');
