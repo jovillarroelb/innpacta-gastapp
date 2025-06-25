@@ -82,6 +82,12 @@ async function initializeFooter() {
 
 // Mejora en la inicialización de la app
 document.addEventListener('DOMContentLoaded', () => {
+    // Forzar ocultar todos los modales al cargar
+    ['category-modal', 'reassign-modal', 'edit-transaction-modal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+    
     // Inicializar footer en todas las páginas
     initializeFooter();
     
