@@ -68,7 +68,98 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-// Aplicar Middleware a todas las rutas de la API
+// --- AUTENTICACIÓN PERSONALIZADA JWT ---
+app.post('/auth/register', async (req, res) => {
+    const { firstName, lastName, email, password } = req.body;
+    if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: 'Faltan campos requeridos.' });
+    }
+    try {
+        const client = await pool.connect();
+        try {
+            // Verifica si el usuario ya existe
+            const userExists = await client.query('SELECT id FROM users WHERE email = $1', [email]);
+            if (userExists.rows.length > 0) {
+                return res.status(409).json({ message: 'El email ya está registrado.' });
+            }
+            // Hashea la contraseña
+            const hashedPassword = await bcrypt.hash(password, 10);
+            // Crea el usuario
+            const userResult = await client.query(
+                'INSERT INTO users (first_name, last_name, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
+                [firstName, lastName, email, hashedPassword]
+            );
+            const userId = userResult.rows[0].id;
+            // Poblar categorías por defecto
+            await client.query(
+                `INSERT INTO categories (name, profile_id) VALUES
+                ('Alimentación', $1),
+                ('Transporte', $1),
+                ('Entretenimiento', $1),
+                ('Salud', $1),
+                ('Educación', $1),
+                ('Vivienda', $1),
+                ('Servicios', $1),
+                ('Otros', $1)`,
+                [userId]
+            );
+            // Poblar presupuestos por defecto (opcional: solo mes actual)
+            const now = new Date();
+            const monthId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            await client.query(
+                'INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3)',
+                [userId, monthId, 0]
+            );
+            // Generar JWT
+            const token = jwt.sign(
+                { sub: userId, email },
+                process.env.SUPABASE_JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.status(201).json({ token });
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error('Error en /auth/register:', err);
+        res.status(500).json({ message: 'Error registrando usuario.' });
+    }
+});
+
+app.post('/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Faltan campos requeridos.' });
+    }
+    try {
+        const client = await pool.connect();
+        try {
+            const userResult = await client.query('SELECT id, password FROM users WHERE email = $1', [email]);
+            if (userResult.rows.length === 0) {
+                return res.status(401).json({ message: 'Credenciales inválidas.' });
+            }
+            const user = userResult.rows[0];
+            const valid = await bcrypt.compare(password, user.password);
+            if (!valid) {
+                return res.status(401).json({ message: 'Credenciales inválidas.' });
+            }
+            // Generar JWT
+            const token = jwt.sign(
+                { sub: user.id, email },
+                process.env.SUPABASE_JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.status(200).json({ token });
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error('Error en /auth/login:', err);
+        res.status(500).json({ message: 'Error en login.' });
+    }
+});
+
+// Middleware de autenticación para /api
 app.use('/api', authMiddleware);
 
 // Middleware para obtener el user id desde el header (o ajusta según tu auth)
@@ -452,99 +543,6 @@ app.use((req, res) => {
         message: 'Ruta no encontrada',
         code: 'ROUTE_NOT_FOUND'
     });
-});
-
-// --- AUTENTICACIÓN PERSONALIZADA JWT ---
-// Registro de usuario
-app.post('/auth/register', async (req, res) => {
-    const { firstName, lastName, email, password } = req.body;
-    if (!email || !password || !firstName || !lastName) {
-        return res.status(400).json({ message: 'Faltan campos requeridos.' });
-    }
-    try {
-        const client = await pool.connect();
-        try {
-            // Verifica si el usuario ya existe
-            const userExists = await client.query('SELECT id FROM users WHERE email = $1', [email]);
-            if (userExists.rows.length > 0) {
-                return res.status(409).json({ message: 'El email ya está registrado.' });
-            }
-            // Hashea la contraseña
-            const hashedPassword = await bcrypt.hash(password, 10);
-            // Crea el usuario
-            const userResult = await client.query(
-                'INSERT INTO users (first_name, last_name, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
-                [firstName, lastName, email, hashedPassword]
-            );
-            const userId = userResult.rows[0].id;
-            // Poblar categorías por defecto
-            await client.query(
-                `INSERT INTO categories (name, profile_id) VALUES
-                ('Alimentación', $1),
-                ('Transporte', $1),
-                ('Entretenimiento', $1),
-                ('Salud', $1),
-                ('Educación', $1),
-                ('Vivienda', $1),
-                ('Servicios', $1),
-                ('Otros', $1)`,
-                [userId]
-            );
-            // Poblar presupuestos por defecto (opcional: solo mes actual)
-            const now = new Date();
-            const monthId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            await client.query(
-                'INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3)',
-                [userId, monthId, 0]
-            );
-            // Generar JWT
-            const token = jwt.sign(
-                { sub: userId, email },
-                process.env.SUPABASE_JWT_SECRET,
-                { expiresIn: '7d' }
-            );
-            res.status(201).json({ token });
-        } finally {
-            client.release();
-        }
-    } catch (err) {
-        console.error('Error en /auth/register:', err);
-        res.status(500).json({ message: 'Error registrando usuario.' });
-    }
-});
-
-// Login de usuario
-app.post('/auth/login', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Faltan campos requeridos.' });
-    }
-    try {
-        const client = await pool.connect();
-        try {
-            const userResult = await client.query('SELECT id, password FROM users WHERE email = $1', [email]);
-            if (userResult.rows.length === 0) {
-                return res.status(401).json({ message: 'Credenciales inválidas.' });
-            }
-            const user = userResult.rows[0];
-            const valid = await bcrypt.compare(password, user.password);
-            if (!valid) {
-                return res.status(401).json({ message: 'Credenciales inválidas.' });
-            }
-            // Generar JWT
-            const token = jwt.sign(
-                { sub: user.id, email },
-                process.env.SUPABASE_JWT_SECRET,
-                { expiresIn: '7d' }
-            );
-            res.status(200).json({ token });
-        } finally {
-            client.release();
-        }
-    } catch (err) {
-        console.error('Error en /auth/login:', err);
-        res.status(500).json({ message: 'Error en login.' });
-    }
 });
 
 // Configuración del puerto con fallback
