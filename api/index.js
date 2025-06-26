@@ -455,7 +455,6 @@ app.use((req, res) => {
 });
 
 // --- AUTENTICACIÓN PERSONALIZADA JWT ---
-
 // Registro de usuario
 app.post('/auth/register', async (req, res) => {
     const { firstName, lastName, email, password } = req.body;
