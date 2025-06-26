@@ -553,7 +553,7 @@ function renderTransactionList(transactions) {
         <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-3">
             <div class="flex-1">
                 <h4 class="font-semibold text-gray-800">${transaction.description}</h4>
-                <p class="text-sm text-gray-500">${transaction.categories?.name || 'Sin categoría'}</p>
+                <p class="text-sm text-gray-500">${transaction.category_name || 'Sin categoría'}</p>
                 ${transaction.comments ? `<p class="text-xs text-gray-400 mt-1">${transaction.comments}</p>` : ''}
             </div>
             <div class="text-right flex items-center">
