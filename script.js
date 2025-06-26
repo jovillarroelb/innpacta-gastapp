@@ -564,12 +564,12 @@ function renderTransactionList(transactions) {
                     <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
                 </div>
                 <div class="flex space-x-1">
-                    <button class="btn-action btn-edit" onclick="editTransaction('${transaction._id}')" title="Editar">
+                    <button class="btn-action btn-edit" onclick="editTransaction('${transaction.id}')" title="Editar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
                     </button>
-                    <button class="btn-action btn-delete" onclick="deleteTransaction('${transaction._id}')" title="Eliminar">
+                    <button class="btn-action btn-delete" onclick="deleteTransaction('${transaction.id}')" title="Eliminar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
@@ -884,7 +884,7 @@ async function editTransaction(transactionId) {
         return;
     }
     const transactions = await response.json();
-    const tx = transactions.find(t => t._id === transactionId);
+    const tx = transactions.find(t => t.id === transactionId);
     if (!tx) {
         showNotification('Transacción no encontrada', 'error');
         console.error('[editTransaction] Transacción no encontrada para id:', transactionId);
@@ -954,14 +954,14 @@ if (editTransactionForm) {
                 showNotification('No hay sesión activa', 'error');
                 return;
             }
-            console.log('[editTransactionForm] update', { description: desc, amount: amount, category_id: catId, comments, _id: currentEditTransactionId, user_id: currentUser.id });
+            console.log('[editTransactionForm] update', { description: desc, amount: amount, category_id: catId, comments, id: currentEditTransactionId, user_id: currentUser.id });
             const response = await fetch('/api/transactions', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ description: desc, amount: amount, category_id: parseInt(catId, 10), comments, _id: currentEditTransactionId, user_id: currentUser.id })
+                body: JSON.stringify({ description: desc, amount: amount, category_id: parseInt(catId, 10), comments, id: currentEditTransactionId, user_id: currentUser.id })
             });
             if (!response.ok) {
                 showNotification('Error al actualizar transacción', 'error');
@@ -999,7 +999,7 @@ async function deleteTransaction(transactionId) {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ _id: transactionId, user_id: currentUser.id })
+            body: JSON.stringify({ id: transactionId, user_id: currentUser.id })
         });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

@@ -442,15 +442,15 @@ app.get('/api/transactions', async (req, res) => {
 // Actualizar transacción
 app.put('/api/transactions', async (req, res) => {
     const userId = req.user.id;
-    const { _id, description, amount, category_id, comments } = req.body;
-    if (!_id || !description) {
+    const { id, description, amount, category_id, comments } = req.body;
+    if (!id || !description) {
         return res.status(400).json({ message: 'Faltan campos requeridos', code: 'MISSING_REQUIRED_FIELDS' });
     }
     try {
         const client = await pool.connect();
         const result = await client.query(
-            `UPDATE transactions SET description = $1, amount = $2, category_id = $3, comments = $4 WHERE _id = $5 AND user_id = $6 RETURNING *`,
-            [description, amount, category_id || null, comments, _id, userId]
+            `UPDATE transactions SET description = $1, amount = $2, category_id = $3, comments = $4 WHERE id = $5 AND user_id = $6 RETURNING *`,
+            [description, amount, category_id || null, comments, id, userId]
         );
         client.release();
         if (result.rows.length === 0) {
@@ -466,13 +466,13 @@ app.put('/api/transactions', async (req, res) => {
 // Eliminar transacción
 app.delete('/api/transactions', async (req, res) => {
     const userId = req.user.id;
-    const { _id } = req.body;
-    if (!_id) {
+    const { id } = req.body;
+    if (!id) {
         return res.status(400).json({ message: 'ID de transacción requerido', code: 'MISSING_TRANSACTION_ID' });
     }
     try {
         const client = await pool.connect();
-        const result = await client.query('DELETE FROM transactions WHERE _id = $1 AND user_id = $2 RETURNING _id', [_id, userId]);
+        const result = await client.query('DELETE FROM transactions WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId]);
         client.release();
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Transacción no encontrada', code: 'TRANSACTION_NOT_FOUND' });
