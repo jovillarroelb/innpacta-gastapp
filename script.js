@@ -62,12 +62,12 @@ async function initializeFooter() {
     let appVersion = '1.0.0'; // Versión por defecto
     try {
         const response = await fetchWithAuth('/api/version');
-        if (response.ok) {
+        if (response && response.ok) {
             const versionData = await response.json();
             appVersion = versionData.version;
         }
     } catch (error) {
-        console.log('No se pudo obtener la versión desde la API, usando versión por defecto');
+        // Silenciar error si no hay sesión activa
     }
     
     // Actualizar elementos de versión
@@ -409,11 +409,12 @@ async function refreshChartsUI() {
 
 // Función helper para fetch con autenticación
 async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+        // No hay sesión activa, retorna null silenciosamente
+        return null;
+    }
     try {
-        const token = localStorage.getItem('jwt_token');
-        if (!token) {
-            throw new Error('No hay sesión activa');
-        }
         const response = await fetch(url, {
             ...options,
             headers: {
