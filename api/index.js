@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
+const fs = require('fs');
 
 // Validación de variables de entorno críticas
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_JWT_SECRET'];
@@ -573,6 +574,15 @@ app.patch('/api/admin/users/:id/role', authMiddleware, adminOnly, async (req, re
         console.error('Error al cambiar rol:', error);
         res.status(500).json({ message: 'Error al cambiar rol.' });
     }
+});
+
+// Endpoint para obtener la versión de la app
+app.get('/api/version', (req, res) => {
+    let version = '1.0.0';
+    try {
+        version = fs.readFileSync('VERSION.md', 'utf8').trim();
+    } catch {}
+    res.json({ version });
 });
 
 // Middleware de manejo de errores global
