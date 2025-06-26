@@ -59,10 +59,13 @@ async function initializeFooter() {
     });
 }
 
+const token = localStorage.getItem('jwt_token');
+const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+
 async function fetchAllAdminData() {
     const loadingIndicator = document.getElementById('loading-indicator-admin');
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/all-data`);
+        const response = await fetch(`${API_BASE_URL}/admin/all-data`, { headers: authHeaders });
         if (!response.ok) {
             throw new Error(`Error ${response.status} al cargar los datos del mantenedor.`);
         }
@@ -72,7 +75,7 @@ async function fetchAllAdminData() {
         console.error(error);
         alert(error.message);
     } finally {
-        loadingIndicator.style.display = 'none';
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
 }
 
@@ -151,7 +154,7 @@ function refreshBudgetsUI() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.querySelector('#users-table tbody');
-    const token = localStorage.getItem('jwt_token');
+    if (!tableBody) return;
     let currentUserId = null;
 
     // Obtener usuario actual (decodificando JWT)
@@ -164,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Cargar usuarios
     fetch('/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: authHeaders
     })
     .then(res => res.json())
     .then(users => {
