@@ -516,31 +516,26 @@ function renderTransactionList(transactions) {
                 <h4 class="font-semibold text-gray-800">${transaction.description}</h4>
                 <p class="text-sm text-gray-500">${transaction.categories?.name || 'Sin categoría'}</p>
                 ${transaction.comments ? `<p class="text-xs text-gray-400 mt-1">${transaction.comments}</p>` : ''}
-                </div>
+            </div>
             <div class="text-right flex items-center">
                 <div class="mr-3">
                     <p class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
                         ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
                     </p>
                     <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
-                        </div>
+                </div>
                 <div class="flex space-x-1">
                     <button class="btn-action btn-edit" onclick="editTransaction(${transaction.id})" title="Editar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                </button>
-                    <button class="btn-action btn-category" onclick="reassignCategory(${transaction.id})" title="Cambiar categoría">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                    </svg>
-                </button>
+                        </svg>
+                    </button>
                     <button class="btn-action btn-delete" onclick="deleteTransaction(${transaction.id})" title="Eliminar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
                     </button>
-            </div>
+                </div>
             </div>
         </div>
     `).join('');
@@ -804,10 +799,74 @@ async function deleteCategory(categoryId) {
     }
 }
 
-// Función para editar transacción
-function editTransaction(transactionId) {
-    // Implementar modal de edición de transacción
-    showNotification('Funcionalidad de edición en desarrollo', 'info');
+// --- MODAL DE EDICIÓN DE TRANSACCIÓN ---
+let currentEditTransactionId = null;
+async function editTransaction(transactionId) {
+    currentEditTransactionId = transactionId;
+    const modal = document.getElementById('edit-transaction-modal');
+    const form = document.getElementById('edit-transaction-form');
+    const descInput = document.getElementById('edit-description');
+    const catSelect = document.getElementById('edit-category');
+    const commentsInput = document.getElementById('edit-comments');
+    if (!modal || !form || !descInput || !catSelect || !commentsInput) return;
+    // Obtener datos de la transacción
+    const { data: { session } } = await supabase.auth.getSession();
+    const { data: txs } = await supabase
+        .from('transactions')
+        .select('id, description, comments, category_id')
+        .eq('id', transactionId)
+        .eq('user_id', session.user.id)
+        .limit(1);
+    const tx = txs && txs.length > 0 ? txs[0] : null;
+    if (!tx) return;
+    descInput.value = tx.description || '';
+    commentsInput.value = tx.comments || '';
+    // Poblar categorías
+    const { data: categories } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('user_id', session.user.id)
+        .order('name');
+    catSelect.innerHTML = categories.map(cat => `<option value="${cat.id}" ${cat.id === tx.category_id ? 'selected' : ''}>${cat.name}</option>`).join('');
+    // Mostrar modal
+    modal.classList.remove('hidden');
+    // Cierre con ESC y click fuera
+    setupModalCloseEvents('edit-transaction-modal', hideEditTransactionModal);
+}
+function hideEditTransactionModal() {
+    const modal = document.getElementById('edit-transaction-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        if (modal._cleanup) modal._cleanup();
+    }
+    currentEditTransactionId = null;
+}
+const closeEditTransactionBtn = document.getElementById('close-edit-transaction-btn');
+if (closeEditTransactionBtn) {
+    closeEditTransactionBtn.addEventListener('click', hideEditTransactionModal);
+}
+const editTransactionForm = document.getElementById('edit-transaction-form');
+if (editTransactionForm) {
+    editTransactionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentEditTransactionId) return;
+        const desc = document.getElementById('edit-description').value.trim();
+        const catId = document.getElementById('edit-category').value;
+        const comments = document.getElementById('edit-comments').value.trim();
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            await supabase
+                .from('transactions')
+                .update({ description: desc, category_id: catId, comments })
+                .eq('id', currentEditTransactionId)
+                .eq('user_id', session.user.id);
+            showNotification('Transacción actualizada', 'success');
+            hideEditTransactionModal();
+            await refreshAllMonthlyUI();
+        } catch (error) {
+            showNotification('Error al actualizar transacción', 'error');
+        }
+    });
 }
 
 // Función para reasignar categoría
