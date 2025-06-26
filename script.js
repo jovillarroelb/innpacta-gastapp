@@ -972,7 +972,7 @@ async function addTransaction(transactionData) {
                 type: transactionData.type,
                 category_id: transactionData.categoryId,
                 month_id: monthId,
-                date: new Date().toISOString().split('T')[0],
+                date: transactionData.date,
                 comments: transactionData.comments || ''
             }])
             .select();
@@ -1160,12 +1160,15 @@ function setupEventListeners() {
             const type = document.querySelector('input[name="transaction_type"]:checked').value;
             const categoryId = document.getElementById('category').value;
             const comments = document.getElementById('comments').value;
+            const now = new Date();
+            const date = now.toISOString().split('T')[0];
+            const monthId = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
             if (!description || !amount || !categoryId) {
                 showNotification('Por favor completa todos los campos requeridos', 'error');
                 return;
             }
             try {
-                await addTransaction({ description, amount, type, categoryId, comments });
+                await addTransaction({ description, amount, type, categoryId, comments, date, monthId });
                 expenseForm.reset();
             } catch (error) {
                 console.error('Error al agregar transacción:', error);
