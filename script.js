@@ -1443,3 +1443,5 @@ if (document.getElementById('app-container')) {
     initializeApp();
 }
 
+window.editTransaction = editTransaction;
+
