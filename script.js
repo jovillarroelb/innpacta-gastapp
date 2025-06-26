@@ -970,7 +970,7 @@ async function addTransaction(transactionData) {
                 description: transactionData.description,
                 amount: transactionData.amount,
                 type: transactionData.type,
-                category_id: transactionData.category_id,
+                category_id: transactionData.categoryId,
                 month_id: monthId,
                 date: new Date().toISOString().split('T')[0],
                 comments: transactionData.comments || ''
@@ -1155,20 +1155,17 @@ function setupEventListeners() {
         console.log('✅ Formulario de transacciones encontrado');
         expenseForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const description = document.getElementById('description').value;
             const amount = parseFloat(document.getElementById('amount').value);
             const type = document.querySelector('input[name="transaction_type"]:checked').value;
-            const category_id = document.getElementById('category').value;
+            const categoryId = document.getElementById('category').value;
             const comments = document.getElementById('comments').value;
-            
-            if (!description || !amount || !category_id) {
+            if (!description || !amount || !categoryId) {
                 showNotification('Por favor completa todos los campos requeridos', 'error');
-        return;
-      }
-            
+                return;
+            }
             try {
-                await addTransaction({ description, amount, type, category_id, comments });
+                await addTransaction({ description, amount, type, categoryId, comments });
                 expenseForm.reset();
             } catch (error) {
                 console.error('Error al agregar transacción:', error);
