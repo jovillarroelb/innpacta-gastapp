@@ -92,15 +92,12 @@ app.post('/auth/register', async (req, res) => {
             const userId = userResult.rows[0].id;
             // Poblar categorías por defecto
             await client.query(
-                `INSERT INTO categories (name, profile_id) VALUES
+                `INSERT INTO categories (name, user_id) VALUES
                 ('Alimentación', $1),
-                ('Transporte', $1),
-                ('Entretenimiento', $1),
-                ('Salud', $1),
-                ('Educación', $1),
-                ('Vivienda', $1),
-                ('Servicios', $1),
-                ('Otros', $1)`,
+                ('Educacion', $1),
+                ('Sueldo', $1),
+                ('Ocio', $1),
+                ('Cuentas', $1)`,
                 [userId]
             );
             // Poblar presupuestos por defecto (opcional: solo mes actual)
@@ -337,7 +334,7 @@ app.get('/api/categories', async (req, res) => {
     const userId = req.user.id;
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT id, name FROM categories WHERE profile_id = $1 ORDER BY name', [userId]);
+        const result = await client.query('SELECT id, name FROM categories WHERE user_id = $1 ORDER BY name', [userId]);
         client.release();
         res.status(200).json(result.rows);
     } catch (error) {
@@ -356,7 +353,7 @@ app.post('/api/categories', async (req, res) => {
     try {
         const client = await pool.connect();
         const result = await client.query(
-            'INSERT INTO categories (name, profile_id) VALUES ($1, $2) RETURNING id, name',
+            'INSERT INTO categories (name, user_id) VALUES ($1, $2) RETURNING id, name',
             [name.trim(), userId]
         );
         client.release();
@@ -382,7 +379,7 @@ app.delete('/api/categories', async (req, res) => {
         // Quitar la categoría de las transacciones
         await client.query('UPDATE transactions SET category_id = NULL WHERE category_id = $1 AND user_id = $2', [id, userId]);
         // Eliminar la categoría
-        const result = await client.query('DELETE FROM categories WHERE id = $1 AND profile_id = $2 RETURNING id', [id, userId]);
+        const result = await client.query('DELETE FROM categories WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId]);
         client.release();
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Categoría no encontrada', code: 'CATEGORY_NOT_FOUND' });
