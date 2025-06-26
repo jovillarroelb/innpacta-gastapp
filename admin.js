@@ -148,3 +148,65 @@ function refreshBudgetsUI() {
 }
 
 // Llama a estas funciones tras agregar/eliminar
+
+document.addEventListener('DOMContentLoaded', () => {
+    const tableBody = document.querySelector('#users-table tbody');
+    const token = localStorage.getItem('jwt_token');
+    let currentUserId = null;
+
+    // Obtener usuario actual (decodificando JWT)
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            currentUserId = payload.sub;
+        } catch {}
+    }
+
+    // Cargar usuarios
+    fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(users => {
+        tableBody.innerHTML = '';
+        users.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.first_name}</td>
+                <td>${user.last_name}</td>
+                <td>${user.email}</td>
+                <td>
+                    <select ${user.id === currentUserId ? 'disabled' : ''} data-user-id="${user.id}">
+                        <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
+                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                    </select>
+                </td>
+                <td>${new Date(user.created_at).toLocaleString()}</td>
+                <td>
+                    <button ${user.id === currentUserId ? 'disabled' : ''} data-user-id="${user.id}" class="save-role-btn">Guardar</button>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    });
+
+    // Delegar evento para guardar rol
+    tableBody.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('save-role-btn')) {
+            const userId = e.target.getAttribute('data-user-id');
+            const select = tableBody.querySelector(`select[data-user-id='${userId}']`);
+            const newRole = select.value;
+            if (!['user', 'admin'].includes(newRole)) return;
+            e.target.disabled = true;
+            await fetch(`/api/admin/users/${userId}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ role: newRole })
+            });
+            e.target.disabled = false;
+        }
+    });
+});

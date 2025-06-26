@@ -68,6 +68,20 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
+// Middleware para verificar si el usuario es admin
+async function adminOnly(req, res, next) {
+    const client = await pool.connect();
+    try {
+        const userResult = await client.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
+        if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
+            return res.status(403).json({ message: 'Acceso solo para administradores.' });
+        }
+        next();
+    } finally {
+        client.release();
+    }
+}
+
 // --- AUTENTICACIÓN PERSONALIZADA JWT ---
 app.post('/auth/register', async (req, res) => {
     const { firstName, lastName, email, password } = req.body;
@@ -523,6 +537,43 @@ app.get('/health', (req, res) => {
 // Ruta principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
+// Listar todos los usuarios (solo admin)
+app.get('/api/admin/users', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const client = await pool.connect();
+        const result = await client.query('SELECT id, first_name, last_name, email, role, created_at FROM users ORDER BY created_at DESC');
+        client.release();
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error al listar usuarios:', error);
+        res.status(500).json({ message: 'Error al listar usuarios.' });
+    }
+});
+
+// Cambiar el rol de un usuario (solo admin)
+app.patch('/api/admin/users/:id/role', authMiddleware, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+    if (!['user', 'admin'].includes(role)) {
+        return res.status(400).json({ message: 'Rol inválido.' });
+    }
+    try {
+        const client = await pool.connect();
+        const result = await client.query(
+            'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, first_name, last_name, email, role',
+            [role, id]
+        );
+        client.release();
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+        res.status(200).json(result.rows[0]);
+    } catch (error) {
+        console.error('Error al cambiar rol:', error);
+        res.status(500).json({ message: 'Error al cambiar rol.' });
+    }
 });
 
 // Middleware de manejo de errores global
