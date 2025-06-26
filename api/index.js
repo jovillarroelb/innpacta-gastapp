@@ -540,6 +540,52 @@ app.patch('/api/admin/users/:id/role', authMiddleware, adminOnly, async (req, re
     }
 });
 
+// Permitir que un usuario actualice su propio perfil (nombre, apellido, contraseña)
+app.patch('/api/admin/users/:id', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { firstName, lastName, password } = req.body;
+    // Solo el propio usuario o un admin puede editar
+    if (req.user.id !== id) {
+        // Verificar si es admin
+        const client = await pool.connect();
+        try {
+            const userResult = await client.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
+            if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
+                return res.status(403).json({ message: 'No autorizado.' });
+            }
+        } finally {
+            client.release();
+        }
+    }
+    try {
+        const client = await pool.connect();
+        const updates = [];
+        const values = [];
+        let idx = 1;
+        if (firstName) { updates.push(`first_name = $${idx++}`); values.push(firstName); }
+        if (lastName) { updates.push(`last_name = $${idx++}`); values.push(lastName); }
+        if (password) {
+            const hashed = await bcrypt.hash(password, 10);
+            updates.push(`password = $${idx++}`);
+            values.push(hashed);
+        }
+        if (updates.length === 0) {
+            client.release();
+            return res.status(400).json({ message: 'Nada que actualizar.' });
+        }
+        values.push(id);
+        const result = await client.query(
+            `UPDATE users SET ${updates.join(', ')} WHERE id = $${idx} RETURNING id, first_name, last_name, email, role`,
+            values
+        );
+        client.release();
+        res.status(200).json(result.rows[0]);
+    } catch (error) {
+        console.error('Error al actualizar perfil:', error);
+        res.status(500).json({ message: 'Error al actualizar perfil.' });
+    }
+});
+
 // Endpoint para obtener la versión de la app
 app.get('/api/version', (req, res) => {
     let version = '1.0.0';

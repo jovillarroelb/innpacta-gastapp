@@ -1642,3 +1642,85 @@ function showAnnualView() {
     // ...código para mostrar la vista anual...
 }
 
+// Avatar: mostrar iniciales nombre y apellido
+function renderAvatar(user) {
+    const avatar = document.getElementById('user-avatar');
+    if (!avatar) return;
+    const first = user.first_name ? user.first_name[0].toUpperCase() : '';
+    const last = user.last_name ? user.last_name[0].toUpperCase() : '';
+    avatar.textContent = first + last;
+}
+
+// Abrir modal de perfil al hacer click en el avatar
+const avatar = document.getElementById('user-avatar');
+if (avatar) {
+    avatar.addEventListener('click', async () => {
+        const modal = document.getElementById('profile-modal');
+        if (!modal) return;
+        // Poblar campos con datos actuales
+        const token = localStorage.getItem('jwt_token');
+        if (!token) return;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        document.getElementById('profile-email').value = payload.email || '';
+        // Obtener datos completos del usuario
+        const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+        const users = await response.json();
+        const user = users.find(u => u.email === payload.email);
+        document.getElementById('profile-firstname').value = user?.first_name || '';
+        document.getElementById('profile-lastname').value = user?.last_name || '';
+        document.getElementById('profile-password').value = '';
+        modal.classList.remove('hidden');
+        setupModalCloseEvents('profile-modal', () => { modal.classList.add('hidden'); });
+    });
+}
+
+// Guardar cambios de perfil
+const profileForm = document.getElementById('profile-form');
+if (profileForm) {
+    profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const firstName = document.getElementById('profile-firstname').value.trim();
+        const lastName = document.getElementById('profile-lastname').value.trim();
+        const password = document.getElementById('profile-password').value;
+        const token = localStorage.getItem('jwt_token');
+        if (!token) return;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const body = { firstName, lastName };
+        if (password) body.password = password;
+        try {
+            const response = await fetch(`/api/admin/users/${payload.sub}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error('Error al actualizar perfil');
+            showNotification('Perfil actualizado', 'success');
+            document.getElementById('profile-modal').classList.add('hidden');
+            // Refrescar avatar
+            renderAvatar({ first_name: firstName, last_name: lastName });
+        } catch (err) {
+            showNotification('Error al actualizar perfil', 'error');
+        }
+    });
+}
+
+// Cerrar modal con botón cancelar
+const closeProfileModalBtn = document.getElementById('close-profile-modal-btn');
+if (closeProfileModalBtn) {
+    closeProfileModalBtn.addEventListener('click', () => {
+        document.getElementById('profile-modal').classList.add('hidden');
+    });
+}
+
+// Logout desde el modal
+const logoutBtn = document.getElementById('logout-btn');
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        localStorage.removeItem('jwt_token');
+        window.location.reload();
+    });
+}
+
