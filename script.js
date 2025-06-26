@@ -1208,20 +1208,35 @@ function setupEventListeners() {
         console.log('✅ Formulario de transacciones encontrado');
         expenseForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const description = document.getElementById('description').value;
+            const description = document.getElementById('description').value.trim();
             const amount = parseFloat(document.getElementById('amount').value);
             const type = document.querySelector('input[name="transaction_type"]:checked').value;
             const categoryId = document.getElementById('category').value;
-            const comments = document.getElementById('comments').value;
+            const comments = document.getElementById('comments').value.trim();
             const now = new Date();
             const date = now.toISOString().split('T')[0];
-            const monthId = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-            if (!description || !amount || !categoryId) {
+            const month = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+            // Validación de campos requeridos
+            if (!description || !amount || amount <= 0 || !type || !date || !month || (type === 'expense' && !categoryId)) {
                 showNotification('Por favor completa todos los campos requeridos', 'error');
                 return;
             }
+            // Construir objeto para backend
+            const transactionData = {
+                description,
+                amount,
+                type,
+                date,
+                month,
+                comments
+            };
+            if (type === 'expense') {
+                transactionData.category_id = categoryId;
+            } else {
+                transactionData.category_id = null;
+            }
             try {
-                await addTransaction({ description, amount, type, categoryId, comments, date, monthId });
+                await addTransaction(transactionData);
                 expenseForm.reset();
             } catch (error) {
                 console.error('Error al agregar transacción:', error);
