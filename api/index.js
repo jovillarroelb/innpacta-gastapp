@@ -2,9 +2,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const { Pool } = require('pg');
 
 // Validación de variables de entorno críticas
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_JWT_SECRET'];
@@ -29,16 +30,8 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..'))); // Sirve archivos estáticos desde la raíz
 
-// Configuración de Supabase con validación
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('❌ Configuración de Supabase incompleta');
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Pool para conexión directa a la base de datos
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // Middleware de logging para debugging
 app.use((req, res, next) => {
@@ -248,155 +241,185 @@ app.patch('/api/transactions/:id/details', async (req, res) => {
     }
 });
 
+// Obtener categorías del usuario
 app.get('/api/categories', async (req, res) => {
-    const profileId = getProfileId(req);
-    if (!profileId) {
-        return res.status(401).json({ 
-            message: 'No autorizado - profile_id requerido',
-            code: 'MISSING_PROFILE_ID'
-        });
-    }
-    
+    const userId = req.user.id;
     try {
-        const { data, error } = await supabase
-            .from('categories')
-            .select('id, name')
-            .eq('profile_id', profileId)
-            .order('name', { ascending: true });
-        if (error) throw error;
-        res.status(200).json(data || []);
+        const client = await pool.connect();
+        const result = await client.query('SELECT id, name FROM categories WHERE profile_id = $1 ORDER BY name', [userId]);
+        client.release();
+        res.status(200).json(result.rows);
     } catch (error) {
         console.error('Error en GET /api/categories', error);
-        res.status(500).json({ 
-            message: 'Error al obtener categorías',
-            code: 'CATEGORIES_FETCH_ERROR'
-        });
+        res.status(500).json({ message: 'Error al obtener categorías', code: 'CATEGORIES_FETCH_ERROR' });
     }
 });
 
+// Crear categoría
 app.post('/api/categories', async (req, res) => {
-    const profileId = getProfileId(req);
+    const userId = req.user.id;
     const { name } = req.body;
-    
-    if (!profileId) {
-        return res.status(401).json({ 
-            message: 'No autorizado - profile_id requerido',
-            code: 'MISSING_PROFILE_ID'
-        });
-    }
-    
     if (!name || name.trim().length === 0) {
-        return res.status(400).json({ 
-            message: 'El nombre de la categoría es requerido',
-            code: 'MISSING_CATEGORY_NAME'
-        });
+        return res.status(400).json({ message: 'El nombre de la categoría es requerido', code: 'MISSING_CATEGORY_NAME' });
     }
-    
     try {
-        const { data, error } = await supabase
-            .from('categories')
-            .insert([{ 
-                name: name.trim(), 
-                profile_id: profileId 
-            }])
-            .select();
-        if (error && error.code === '23505') {
-            return res.status(409).json({ 
-                message: 'La categoría ya existe',
-                code: 'CATEGORY_ALREADY_EXISTS'
-            });
-        }
-        if (error) throw error;
-        res.status(201).json(data[0]);
+        const client = await pool.connect();
+        const result = await client.query(
+            'INSERT INTO categories (name, profile_id) VALUES ($1, $2) RETURNING id, name',
+            [name.trim(), userId]
+        );
+        client.release();
+        res.status(201).json(result.rows[0]);
     } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({ message: 'La categoría ya existe', code: 'CATEGORY_ALREADY_EXISTS' });
+        }
         console.error('Error en POST /api/categories', error);
-        res.status(500).json({ 
-            message: 'Error al crear la categoría',
-            code: 'CATEGORY_CREATION_ERROR'
-        });
+        res.status(500).json({ message: 'Error al crear la categoría', code: 'CATEGORY_CREATION_ERROR' });
     }
 });
 
-app.delete('/api/categories/:id', async (req, res) => {
-    const profileId = getProfileId(req);
-    const { id } = req.params;
-    
-    if (!profileId) {
-        return res.status(401).json({ 
-            message: 'No autorizado - profile_id requerido',
-            code: 'MISSING_PROFILE_ID'
-        });
-    }
-    
+// Eliminar categoría
+app.delete('/api/categories', async (req, res) => {
+    const userId = req.user.id;
+    const { id } = req.body;
     if (!id) {
-        return res.status(400).json({ 
-            message: 'ID de categoría requerido',
-            code: 'MISSING_CATEGORY_ID'
-        });
+        return res.status(400).json({ message: 'ID de categoría requerido', code: 'MISSING_CATEGORY_ID' });
     }
-    
     try {
-        // Primero, actualiza transacciones para quitar la categoría
-        await supabase
-            .from('transactions')
-            .update({ category_id: null })
-            .eq('category_id', id);
-        
-        // Luego, elimina la categoría
-        const { error, count } = await supabase
-            .from('categories')
-            .delete()
-            .eq('id', id)
-            .eq('profile_id', profileId);
-        if (error) throw error;
-        if (count === 0) {
-            return res.status(404).json({ 
-                message: "Categoría no encontrada",
-                code: 'CATEGORY_NOT_FOUND'
-            });
+        const client = await pool.connect();
+        // Quitar la categoría de las transacciones
+        await client.query('UPDATE transactions SET category_id = NULL WHERE category_id = $1 AND user_id = $2', [id, userId]);
+        // Eliminar la categoría
+        const result = await client.query('DELETE FROM categories WHERE id = $1 AND profile_id = $2 RETURNING id', [id, userId]);
+        client.release();
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Categoría no encontrada', code: 'CATEGORY_NOT_FOUND' });
         }
-        res.status(200).json({ message: "Categoría eliminada exitosamente" });
+        res.status(200).json({ message: 'Categoría eliminada exitosamente' });
     } catch (error) {
         console.error('Error en DELETE /api/categories', error);
-        res.status(500).json({ 
-            message: 'Error al eliminar la categoría',
-            code: 'CATEGORY_DELETION_ERROR'
-        });
+        res.status(500).json({ message: 'Error al eliminar la categoría', code: 'CATEGORY_DELETION_ERROR' });
     }
 });
 
-app.delete('/api/transactions/:id', async (req, res) => {
-    const { id } = req.params;
+// Obtener presupuestos del usuario
+app.get('/api/budgets', async (req, res) => {
     const userId = req.user.id;
-    
-    if (!id) {
-        return res.status(400).json({ 
-            message: 'ID de transacción requerido',
-            code: 'MISSING_TRANSACTION_ID'
-        });
-    }
-    
     try {
-        const { data, error } = await supabase
-            .from('transactions')
-            .delete()
-            .eq('_id', id)
-            .eq('user_id', userId)
-            .select();
-        if (error) throw error;
-        if (!data || data.length === 0) {
-            return res.status(404).json({ 
-                message: "Transacción no encontrada",
-                code: 'TRANSACTION_NOT_FOUND'
-            });
+        const client = await pool.connect();
+        const result = await client.query('SELECT * FROM budgets WHERE user_id = $1 ORDER BY month_id', [userId]);
+        client.release();
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error en GET /api/budgets', error);
+        res.status(500).json({ message: 'Error al obtener presupuestos', code: 'BUDGETS_FETCH_ERROR' });
+    }
+});
+
+// Crear o actualizar presupuesto
+app.put('/api/budgets', async (req, res) => {
+    const userId = req.user.id;
+    const budgets = Array.isArray(req.body) ? req.body : [req.body];
+    try {
+        const client = await pool.connect();
+        for (const b of budgets) {
+            await client.query(
+                'INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3) ON CONFLICT (user_id, month_id) DO UPDATE SET amount = EXCLUDED.amount',
+                [userId, b.month_id, b.amount]
+            );
         }
-        res.status(200).json({ message: "Transacción eliminada exitosamente" });
+        client.release();
+        res.status(200).json({ message: 'Presupuestos guardados exitosamente' });
+    } catch (error) {
+        console.error('Error en PUT /api/budgets', error);
+        res.status(500).json({ message: 'Error al guardar presupuestos', code: 'BUDGET_SAVE_ERROR' });
+    }
+});
+
+// Obtener transacciones del usuario
+app.get('/api/transactions', async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const client = await pool.connect();
+        const result = await client.query(
+            `SELECT t.*, c.name as category_name FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE t.user_id = $1 ORDER BY t.date DESC`,
+            [userId]
+        );
+        client.release();
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('Error en GET /api/transactions', error);
+        res.status(500).json({ message: 'Error al obtener transacciones', code: 'TRANSACTIONS_FETCH_ERROR' });
+    }
+});
+
+// Crear transacción
+app.post('/api/transactions', async (req, res) => {
+    const userId = req.user.id;
+    const { description, amount, type, category_id, date, month_id, comments } = req.body;
+    if (!description || !amount || !type || !date || !month_id) {
+        return res.status(400).json({ message: 'Faltan campos requeridos', code: 'MISSING_REQUIRED_FIELDS' });
+    }
+    if (!['income', 'expense'].includes(type)) {
+        return res.status(400).json({ message: 'Tipo debe ser "income" o "expense"', code: 'INVALID_TRANSACTION_TYPE' });
+    }
+    try {
+        const client = await pool.connect();
+        const result = await client.query(
+            `INSERT INTO transactions (user_id, description, amount, type, category_id, date, month_id, comments) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [userId, description, parseFloat(amount), type, category_id || null, date, month_id, comments]
+        );
+        client.release();
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Error en POST /api/transactions', error);
+        res.status(500).json({ message: 'Error al crear la transacción', code: 'TRANSACTION_CREATION_ERROR' });
+    }
+});
+
+// Actualizar transacción
+app.put('/api/transactions', async (req, res) => {
+    const userId = req.user.id;
+    const { _id, description, amount, category_id, comments } = req.body;
+    if (!_id || !description) {
+        return res.status(400).json({ message: 'Faltan campos requeridos', code: 'MISSING_REQUIRED_FIELDS' });
+    }
+    try {
+        const client = await pool.connect();
+        const result = await client.query(
+            `UPDATE transactions SET description = $1, amount = $2, category_id = $3, comments = $4 WHERE _id = $5 AND user_id = $6 RETURNING *`,
+            [description, amount, category_id || null, comments, _id, userId]
+        );
+        client.release();
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Transacción no encontrada', code: 'TRANSACTION_NOT_FOUND' });
+        }
+        res.status(200).json(result.rows[0]);
+    } catch (error) {
+        console.error('Error en PUT /api/transactions', error);
+        res.status(500).json({ message: 'Error al actualizar la transacción', code: 'TRANSACTION_UPDATE_ERROR' });
+    }
+});
+
+// Eliminar transacción
+app.delete('/api/transactions', async (req, res) => {
+    const userId = req.user.id;
+    const { _id } = req.body;
+    if (!_id) {
+        return res.status(400).json({ message: 'ID de transacción requerido', code: 'MISSING_TRANSACTION_ID' });
+    }
+    try {
+        const client = await pool.connect();
+        const result = await client.query('DELETE FROM transactions WHERE _id = $1 AND user_id = $2 RETURNING _id', [_id, userId]);
+        client.release();
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Transacción no encontrada', code: 'TRANSACTION_NOT_FOUND' });
+        }
+        res.status(200).json({ message: 'Transacción eliminada' });
     } catch (error) {
         console.error('Error en DELETE /api/transactions', error);
-        res.status(500).json({ 
-            message: 'Error al eliminar la transacción',
-            code: 'TRANSACTION_DELETION_ERROR'
-        });
+        res.status(500).json({ message: 'Error al eliminar la transacción', code: 'TRANSACTION_DELETION_ERROR' });
     }
 });
 
@@ -429,6 +452,100 @@ app.use((req, res) => {
         message: 'Ruta no encontrada',
         code: 'ROUTE_NOT_FOUND'
     });
+});
+
+// --- AUTENTICACIÓN PERSONALIZADA JWT ---
+
+// Registro de usuario
+app.post('/auth/register', async (req, res) => {
+    const { firstName, lastName, email, password } = req.body;
+    if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: 'Faltan campos requeridos.' });
+    }
+    try {
+        const client = await pool.connect();
+        try {
+            // Verifica si el usuario ya existe
+            const userExists = await client.query('SELECT id FROM users WHERE email = $1', [email]);
+            if (userExists.rows.length > 0) {
+                return res.status(409).json({ message: 'El email ya está registrado.' });
+            }
+            // Hashea la contraseña
+            const hashedPassword = await bcrypt.hash(password, 10);
+            // Crea el usuario
+            const userResult = await client.query(
+                'INSERT INTO users (first_name, last_name, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
+                [firstName, lastName, email, hashedPassword]
+            );
+            const userId = userResult.rows[0].id;
+            // Poblar categorías por defecto
+            await client.query(
+                `INSERT INTO categories (name, profile_id) VALUES
+                ('Alimentación', $1),
+                ('Transporte', $1),
+                ('Entretenimiento', $1),
+                ('Salud', $1),
+                ('Educación', $1),
+                ('Vivienda', $1),
+                ('Servicios', $1),
+                ('Otros', $1)`,
+                [userId]
+            );
+            // Poblar presupuestos por defecto (opcional: solo mes actual)
+            const now = new Date();
+            const monthId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            await client.query(
+                'INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3)',
+                [userId, monthId, 0]
+            );
+            // Generar JWT
+            const token = jwt.sign(
+                { sub: userId, email },
+                process.env.SUPABASE_JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.status(201).json({ token });
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error('Error en /auth/register:', err);
+        res.status(500).json({ message: 'Error registrando usuario.' });
+    }
+});
+
+// Login de usuario
+app.post('/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Faltan campos requeridos.' });
+    }
+    try {
+        const client = await pool.connect();
+        try {
+            const userResult = await client.query('SELECT id, password FROM users WHERE email = $1', [email]);
+            if (userResult.rows.length === 0) {
+                return res.status(401).json({ message: 'Credenciales inválidas.' });
+            }
+            const user = userResult.rows[0];
+            const valid = await bcrypt.compare(password, user.password);
+            if (!valid) {
+                return res.status(401).json({ message: 'Credenciales inválidas.' });
+            }
+            // Generar JWT
+            const token = jwt.sign(
+                { sub: user.id, email },
+                process.env.SUPABASE_JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+            res.status(200).json({ token });
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error('Error en /auth/login:', err);
+        res.status(500).json({ message: 'Error en login.' });
+    }
 });
 
 // Configuración del puerto con fallback

@@ -1,4 +1,6 @@
-import { supabase } from './auth.js';
+// Elimino import { supabase } ...
+// Elimino todas las llamadas a supabase.auth, supabase.from, etc.
+// Elimino funciones y helpers de Supabase que ya no se usan.
 
 function displayMonth(date) {
     const meses = [
@@ -221,8 +223,8 @@ async function handleAuthPage() {
 
     // Evita bucles de refresh: solo redirige si hay sesión
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
+        const token = localStorage.getItem('jwt_token');
+        if (token) {
             window.location.replace('/app.html');
             return;
         }
@@ -247,10 +249,17 @@ async function handleAuthPage() {
         
         showLoading('login-submit', true);
         try {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            showMessage('Error: ' + error.message, 'error');
-        } else {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                showMessage(result.message || 'Error en el inicio de sesión', 'error');
+            } else {
+                // Guarda el token JWT en localStorage
+                localStorage.setItem('jwt_token', result.token);
                 showNotification('¡Inicio de sesión exitoso!', 'success');
                 setTimeout(() => window.location.replace('/app.html'), 1000);
             }
@@ -285,15 +294,21 @@ async function handleAuthPage() {
         
         showLoading('register-submit', true);
         try {
-        const { data, error } = await supabase.auth.signUp({
-            email, password,
-            options: { data: { first_name: firstName, last_name: lastName } }
-        });
-        if (error) {
-            showMessage('Error: ' + error.message, 'error');
-        } else {
-            showMessage('¡Registro exitoso! Revise su correo para confirmar la cuenta.', 'success');
-            registerForm.reset();
+            const response = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, firstName, lastName })
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                showMessage(result.message || 'Error en el registro', 'error');
+            } else {
+                // Guarda el token JWT en localStorage
+                localStorage.setItem('jwt_token', result.token);
+                showMessage('¡Registro exitoso! Ya puedes usar la app.', 'success');
+                registerForm.reset();
+                // Opcional: redirigir o recargar para iniciar sesión automáticamente
+                setTimeout(() => window.location.reload(), 1200);
             }
         } catch (error) {
             showMessage('Error de conexión. Intenta nuevamente.', 'error');
@@ -369,31 +384,27 @@ async function refreshChartsUI() {
     }
 }
 
-// Mejora en el manejo de errores de la API
-async function apiCall(endpoint, options = {}) {
+// Función helper para fetch con autenticación
+async function fetchWithAuth(url, options = {}) {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
             throw new Error('No hay sesión activa');
         }
-        
-        const response = await fetch(`/api${endpoint}`, {
+        const response = await fetch(url, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
+                'Authorization': `Bearer ${token}`,
                 ...options.headers
             }
         });
-        
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Error ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        return await response.json();
+        return response;
     } catch (error) {
-        console.error(`Error en API call ${endpoint}:`, error);
+        console.error('Error en fetchWithAuth:', error);
         throw error;
     }
 }
@@ -405,11 +416,13 @@ let currentYear = new Date().getFullYear();
 
 // Función para obtener datos del usuario
 async function getCurrentUser() {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return null;
+    // Decodifica el JWT para obtener el userId y email (sin validar firma, solo para frontend)
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        return user;
-    } catch (error) {
-        console.error('Error al obtener usuario:', error);
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return { id: payload.sub, email: payload.email };
+    } catch {
         return null;
     }
 }
@@ -417,19 +430,19 @@ async function getCurrentUser() {
 // Función para obtener categorías por usuario
 async function getCategories() {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
-        const { data, error } = await supabase
-            .from('categories')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .order('name');
-        if (error) {
-            console.error('Error Supabase getCategories:', error);
-            throw error;
+        const token = localStorage.getItem('jwt_token');
+        if (!token) throw new Error('No hay sesión activa');
+        const response = await fetch('/api/categories', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-        console.log('Categorías obtenidas para usuario', session.user.id, data);
-        return data || [];
+        const categories = await response.json();
+        console.log('Categorías obtenidas para usuario', currentUser.id, categories);
+        return categories || [];
     } catch (error) {
         console.error('Error al obtener categorías:', error);
         showNotification('Error al obtener categorías', 'error');
@@ -440,23 +453,22 @@ async function getCategories() {
 // Función para obtener transacciones
 async function getTransactions() {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
+        const token = localStorage.getItem('jwt_token');
+        if (!token) throw new Error('No hay sesión activa');
         
         const monthId = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
         
-        const { data, error } = await supabase
-            .from('transactions')
-            .select(`
-                *,
-                categories(name)
-            `)
-            .eq('user_id', session.user.id)
-            .eq('month_id', monthId)
-            .order('created_at', { ascending: false });
-            
-        if (error) throw error;
-        return data || [];
+        const response = await fetch('/api/transactions', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const transactions = await response.json();
+        console.log('Transacciones obtenidas para usuario', currentUser.id, transactions);
+        return transactions || [];
     } catch (error) {
         console.error('Error al obtener transacciones:', error);
         return [];
@@ -466,19 +478,22 @@ async function getTransactions() {
 // Función para obtener presupuestos
 async function getBudgets() {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
+        const token = localStorage.getItem('jwt_token');
+        if (!token) throw new Error('No hay sesión activa');
         
         const monthId = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
         
-        const { data, error } = await supabase
-            .from('budgets')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('month_id', monthId);
-            
-        if (error) throw error;
-        return data || [];
+        const response = await fetch('/api/budgets', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const budgets = await response.json();
+        console.log('Presupuestos obtenidos para usuario', currentUser.id, budgets);
+        return budgets || [];
     } catch (error) {
         console.error('Error al obtener presupuestos:', error);
         return [];
@@ -782,14 +797,19 @@ function setupCategoryForm() {
 async function deleteCategory(categoryId) {
     if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
-        const { error } = await supabase
-            .from('categories')
-            .delete()
-            .eq('id', categoryId)
-            .eq('user_id', session.user.id);
-        if (error) throw error;
+        const token = localStorage.getItem('jwt_token');
+        if (!token) throw new Error('No hay sesión activa');
+        const response = await fetch('/api/categories', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: categoryId })
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         showNotification('Categoría eliminada exitosamente', 'success');
         await refreshCategoriesUI();
         await loadCategoriesList();
@@ -820,23 +840,23 @@ async function editTransaction(transactionId) {
         return;
     }
     // Obtener datos de la transacción
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
         showNotification('No hay sesión activa', 'error');
         return;
     }
-    const { data: txs, error: txError } = await supabase
-        .from('transactions')
-        .select('_id, description, amount, comments, category_id')
-        .eq('_id', transactionId)
-        .eq('user_id', session.user.id)
-        .limit(1);
-    if (txError) {
+    const response = await fetch('/api/transactions', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!response.ok) {
         showNotification('Error al obtener transacción', 'error');
-        console.error('[editTransaction] Error al obtener transacción:', txError);
+        console.error('[editTransaction] Error al obtener transacción:', response.statusText);
         return;
     }
-    const tx = txs && txs.length > 0 ? txs[0] : null;
+    const transactions = await response.json();
+    const tx = transactions.find(t => t._id === transactionId);
     if (!tx) {
         showNotification('Transacción no encontrada', 'error');
         console.error('[editTransaction] Transacción no encontrada para id:', transactionId);
@@ -846,16 +866,17 @@ async function editTransaction(transactionId) {
     amountInput.value = tx.amount || '';
     commentsInput.value = tx.comments || '';
     // Poblar categorías
-    const { data: categories, error: catError } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('user_id', session.user.id)
-        .order('name');
-    if (catError) {
+    const categoriesResponse = await fetch('/api/categories', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!categoriesResponse.ok) {
         showNotification('Error al obtener categorías', 'error');
-        console.error('[editTransaction] Error al obtener categorías:', catError);
+        console.error('[editTransaction] Error al obtener categorías:', categoriesResponse.statusText);
         return;
     }
+    const categories = await categoriesResponse.json();
     catSelect.innerHTML = categories.map(cat => `<option value="${cat.id}" ${cat.id === tx.category_id ? 'selected' : ''}>${cat.name}</option>`).join('');
     // Mostrar modal
     modal.classList.remove('hidden');
@@ -900,20 +921,23 @@ if (editTransactionForm) {
             return;
         }
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
                 showNotification('No hay sesión activa', 'error');
                 return;
             }
-            console.log('[editTransactionForm] update', { description: desc, amount: amount, category_id: catId, comments, _id: currentEditTransactionId, user_id: session.user.id });
-            const { error: updateError } = await supabase
-                .from('transactions')
-                .update({ description: desc, amount: amount, category_id: catId, comments })
-                .eq('_id', currentEditTransactionId)
-                .eq('user_id', session.user.id);
-            if (updateError) {
+            console.log('[editTransactionForm] update', { description: desc, amount: amount, category_id: catId, comments, _id: currentEditTransactionId, user_id: currentUser.id });
+            const response = await fetch('/api/transactions', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ description: desc, amount: amount, category_id: catId, comments, _id: currentEditTransactionId, user_id: currentUser.id })
+            });
+            if (!response.ok) {
                 showNotification('Error al actualizar transacción', 'error');
-                console.error('[editTransactionForm] Error al actualizar transacción:', updateError);
+                console.error('[editTransactionForm] Error al actualizar transacción:', response.statusText);
                 return;
             }
             showNotification('Transacción actualizada', 'success');
@@ -935,18 +959,23 @@ function reassignCategory(transactionId) {
 // Función para eliminar transacción
 async function deleteTransaction(transactionId) {
     if (!confirm('¿Estás seguro de que deseas eliminar esta transacción?')) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
         showNotification('No hay sesión activa', 'error');
         return;
     }
     try {
-        const { error } = await supabase
-            .from('transactions')
-            .delete()
-            .eq('_id', transactionId)
-            .eq('user_id', session.user.id);
-        if (error) throw error;
+        const response = await fetch('/api/transactions', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ _id: transactionId, user_id: currentUser.id })
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         showNotification('Transacción eliminada', 'success');
         await refreshAllMonthlyUI();
     } catch (error) {
@@ -958,13 +987,13 @@ async function deleteTransaction(transactionId) {
 // Función para agregar transacción
 async function addTransaction(transactionData) {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
+        const token = localStorage.getItem('jwt_token');
+        if (!token) throw new Error('No hay sesión activa');
         const response = await fetch('/api/transactions', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(transactionData)
         });
@@ -986,16 +1015,22 @@ async function addTransaction(transactionData) {
 // Función para agregar categoría por usuario
 async function addCategory(categoryData) {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
-        const { data, error } = await supabase
-            .from('categories')
-            .insert([{ name: categoryData.name, user_id: session.user.id }])
-            .select();
-        if (error) throw error;
+        const token = localStorage.getItem('jwt_token');
+        if (!token) throw new Error('No hay sesión activa');
+        const response = await fetch('/api/categories', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(categoryData)
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         showNotification('Categoría agregada exitosamente', 'success');
         await refreshCategoriesUI();
-        return data[0];
+        return await response.json();
     } catch (error) {
         console.error('Error al agregar categoría:', error);
         showNotification('Error al agregar categoría', 'error');
@@ -1006,13 +1041,11 @@ async function addCategory(categoryData) {
 // Función para cerrar sesión
 async function logout() {
     try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        
+        localStorage.removeItem('jwt_token');
         showNotification('Sesión cerrada exitosamente', 'success');
-            setTimeout(() => {
+        setTimeout(() => {
             window.location.replace('/');
-            }, 1000);
+        }, 1000);
     } catch (error) {
         console.error('Error al cerrar sesión:', error);
         showNotification('Error al cerrar sesión', 'error');
@@ -1088,15 +1121,15 @@ initializeApp = async function() {
 async function initializeApp() {
     console.log('🚀 Inicializando aplicación...');
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
             console.log('❌ No hay sesión activa, redirigiendo a /');
             window.location.replace('/');
             return;
         }
         
         console.log('✅ Sesión activa encontrada');
-        currentUser = session.user;
+        currentUser = await getCurrentUser();
         
         // Configurar elementos de la interfaz
         const mainTitle = document.getElementById('main-title');
@@ -1240,44 +1273,25 @@ function updateMonthDisplay() {
     }
 }
 
-// Función helper para fetch con autenticación
-async function fetchWithAuth(url, options = {}) {
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            throw new Error('No hay sesión activa');
-        }
-        
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-                ...options.headers
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        return response;
-    } catch (error) {
-        console.error('Error en fetchWithAuth:', error);
-        throw error;
-    }
-}
-
 // === LÓGICA ANUAL ===
 
 // Obtiene los gastos y presupuestos por mes para el año seleccionado
 async function getAnnualData(selectedYear) {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
-        const userId = session.user.id;
+        const token = localStorage.getItem('jwt_token');
+        if (!token) throw new Error('No hay sesión activa');
+        const response = await fetch('/api/budgets', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const budgets = await response.json();
+        const userId = currentUser.id;
         // 1. Obtener presupuestos del año
-        const { data: budgets, error: errorBudgets } = await supabase
+        const { data: budgetsData, error: errorBudgets } = await supabase
             .from('budgets')
             .select('month_id, amount')
             .eq('user_id', userId)
@@ -1295,7 +1309,7 @@ async function getAnnualData(selectedYear) {
         // 3. Procesar datos por mes
         const gastosPorMes = Array(12).fill(0);
         const presupuestosPorMes = Array(12).fill(0);
-        budgets.forEach(b => {
+        budgetsData.forEach(b => {
             const mes = parseInt(b.month_id.split('-')[1], 10) - 1;
             presupuestosPorMes[mes] = b.amount;
         });
@@ -1422,14 +1436,15 @@ if (editAnnualBudgetsBtn && editAnnualBudgetsModal && editAnnualBudgetsForm) {
         editAnnualYear.textContent = selectedYear;
         editAnnualBudgetsModal.classList.remove('hidden');
         // Obtener presupuestos actuales
-        const { data: { session } } = await supabase.auth.getSession();
-        const userId = session.user.id;
-        const { data: budgets } = await supabase
-            .from('budgets')
-            .select('month_id, amount')
-            .eq('user_id', userId)
-            .gte('month_id', `${selectedYear}-01`)
-            .lte('month_id', `${selectedYear}-12`);
+        const response = await fetch('/api/budgets', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const budgets = await response.json();
         // Poblar inputs
         const meses = [
             'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -1467,13 +1482,22 @@ if (editAnnualBudgetsForm) {
             updates.push({ month_id: monthId, amount: parseInt(amount, 10) });
         }
         // Actualizar presupuestos en Supabase
-        const { data: { session } } = await supabase.auth.getSession();
-        const userId = session.user.id;
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
+            showNotification('No hay sesión activa', 'error');
+            return;
+        }
         try {
-            for (const upd of updates) {
-                await supabase
-                    .from('budgets')
-                    .upsert({ user_id: userId, month_id: upd.month_id, amount: upd.amount }, { onConflict: ['user_id', 'month_id'] });
+            const response = await fetch('/api/budgets', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             showNotification('Presupuestos actualizados', 'success');
             editAnnualBudgetsModal.classList.add('hidden');

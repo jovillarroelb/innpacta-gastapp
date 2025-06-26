@@ -143,6 +143,17 @@ CREATE TABLE transactions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Tabla de usuarios personalizada para autenticación JWT
+CREATE TABLE users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Trigger para poblar categorías por defecto
 CREATE OR REPLACE FUNCTION populate_default_categories()
 RETURNS TRIGGER AS $$
@@ -274,66 +285,4 @@ vercel
 - `GET /api/data/:monthId` - Obtener datos del mes
 - `POST /api/transactions` - Crear transacción
 - `PATCH /api/transactions/:id/details` - Actualizar transacción
-- `DELETE /api/transactions/:id` - Eliminar transacción
-
-### Categorías
-- `GET /api/categories` - Obtener categorías
-- `POST /api/categories` - Crear categoría
-- `DELETE /api/categories/:id` - Eliminar categoría
-
-### Presupuestos
-- `POST /api/budget` - Guardar presupuesto
-
-### Utilidades
-- `GET /health` - Health check
-- `GET /api/version` - Información de versión
-
----
-
-## 🐛 Solución de Problemas
-
-### Error: "supabaseUrl is required"
-- Verifica que las variables de entorno estén configuradas
-- Asegúrate de que el archivo `.env` existe en la raíz
-
-### Error: "Token inválido"
-- La sesión puede haber expirado
-- Intenta cerrar sesión y volver a iniciar
-
-### Error: "No autorizado"
-- Verifica que estés autenticado
-- Revisa que las políticas RLS estén configuradas
-
-### Problemas de CORS
-- Verifica la configuración de CORS en `api/index.js`
-- Asegúrate de que los dominios estén permitidos
-
----
-
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
-
----
-
-## 📞 Soporte
-
-Si tienes problemas o preguntas:
-
-1. Revisa la documentación de Supabase
-2. Abre un issue en GitHub
-3. Contacta al equipo de desarrollo
-
----
-
-**Desarrollado con ❤️ por el equipo de Innpacta**
+- `
