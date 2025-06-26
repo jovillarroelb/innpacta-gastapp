@@ -600,7 +600,7 @@ async function getChartData() {
         const incomeByCategory = {};
         
         transactions.forEach(transaction => {
-            const categoryName = transaction.categories?.name || 'Sin categoría';
+            const categoryName = transaction.category_name || 'Sin categoría';
             if (transaction.type === 'expense') {
                 expensesByCategory[categoryName] = (expensesByCategory[categoryName] || 0) + transaction.amount;
             } else {
