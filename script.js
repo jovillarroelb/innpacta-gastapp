@@ -195,15 +195,15 @@ async function handleAuthPage() {
             tabLogin.classList.remove('text-gray-500', 'bg-white');
             tabRegister.classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-purple-500', 'text-white');
             tabRegister.classList.add('text-gray-500', 'bg-white');
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
         } else {
             tabRegister.classList.add('bg-gradient-to-r', 'from-blue-600', 'to-purple-500', 'text-white');
             tabRegister.classList.remove('text-gray-500', 'bg-white');
             tabLogin.classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-purple-500', 'text-white');
             tabLogin.classList.add('text-gray-500', 'bg-white');
-            loginForm.classList.add('hidden');
-            registerForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
         }
     }
     setActiveTab('login');
@@ -247,10 +247,10 @@ async function handleAuthPage() {
         
         showLoading('login-submit', true);
         try {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                showMessage('Error: ' + error.message, 'error');
-            } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            showMessage('Error: ' + error.message, 'error');
+        } else {
                 showNotification('¡Inicio de sesión exitoso!', 'success');
                 setTimeout(() => window.location.replace('/app.html'), 1000);
             }
@@ -285,15 +285,15 @@ async function handleAuthPage() {
         
         showLoading('register-submit', true);
         try {
-            const { data, error } = await supabase.auth.signUp({
-                email, password,
-                options: { data: { first_name: firstName, last_name: lastName } }
-            });
-            if (error) {
-                showMessage('Error: ' + error.message, 'error');
-            } else {
-                showMessage('¡Registro exitoso! Revise su correo para confirmar la cuenta.', 'success');
-                registerForm.reset();
+        const { data, error } = await supabase.auth.signUp({
+            email, password,
+            options: { data: { first_name: firstName, last_name: lastName } }
+        });
+        if (error) {
+            showMessage('Error: ' + error.message, 'error');
+        } else {
+            showMessage('¡Registro exitoso! Revise su correo para confirmar la cuenta.', 'success');
+            registerForm.reset();
             }
         } catch (error) {
             showMessage('Error de conexión. Intenta nuevamente.', 'error');
@@ -516,31 +516,31 @@ function renderTransactionList(transactions) {
                 <h4 class="font-semibold text-gray-800">${transaction.description}</h4>
                 <p class="text-sm text-gray-500">${transaction.categories?.name || 'Sin categoría'}</p>
                 ${transaction.comments ? `<p class="text-xs text-gray-400 mt-1">${transaction.comments}</p>` : ''}
-            </div>
+                </div>
             <div class="text-right flex items-center">
                 <div class="mr-3">
                     <p class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
                         ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
                     </p>
                     <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
-                </div>
+                        </div>
                 <div class="flex space-x-1">
                     <button class="btn-action btn-edit" onclick="editTransaction(${transaction.id})" title="Editar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                    </button>
+                    </svg>
+                </button>
                     <button class="btn-action btn-category" onclick="reassignCategory(${transaction.id})" title="Cambiar categoría">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                        </svg>
-                    </button>
+                    </svg>
+                </button>
                     <button class="btn-action btn-delete" onclick="deleteTransaction(${transaction.id})" title="Eliminar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
                     </button>
-                </div>
+            </div>
             </div>
         </div>
     `).join('');
@@ -593,49 +593,49 @@ function renderCharts(data) {
     const expensesCtx = document.getElementById('expenses-chart');
     if (expensesCtx && Object.keys(data.expenses).length > 0) {
         new Chart(expensesCtx, {
-            type: 'doughnut',
-            data: {
+        type: 'doughnut',
+        data: {
                 labels: Object.keys(data.expenses),
-                datasets: [{
+            datasets: [{
                     data: Object.values(data.expenses),
-                    backgroundColor: [
+                backgroundColor: [
                         '#ef4444', '#f97316', '#eab308', '#84cc16',
                         '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'
                     ]
-                }]
-            },
-            options: {
+            }]
+        },
+        options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
+            plugins: {
+                legend: {
                         position: 'bottom'
-                    }
                 }
             }
-        });
-    }
-    
+        }
+    });
+}
+
     // Gráfico de ingresos por categoría
     const incomeCtx = document.getElementById('income-chart');
     if (incomeCtx && Object.keys(data.income).length > 0) {
         new Chart(incomeCtx, {
-            type: 'doughnut',
-            data: {
+        type: 'doughnut',
+        data: {
                 labels: Object.keys(data.income),
-                datasets: [{
+            datasets: [{
                     data: Object.values(data.income),
-                    backgroundColor: [
+                backgroundColor: [
                         '#10b981', '#059669', '#047857', '#065f46',
                         '#064e3b', '#022c22', '#042f2e', '#0f766e'
                     ]
-                }]
-            },
-            options: {
+            }]
+        },
+        options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
+            plugins: {
+                legend: {
                         position: 'bottom'
                     }
                 }
@@ -890,9 +890,9 @@ async function logout() {
         if (error) throw error;
         
         showNotification('Sesión cerrada exitosamente', 'success');
-        setTimeout(() => {
+            setTimeout(() => {
             window.location.replace('/');
-        }, 1000);
+            }, 1000);
     } catch (error) {
         console.error('Error al cerrar sesión:', error);
         showNotification('Error al cerrar sesión', 'error');
@@ -986,8 +986,8 @@ function setupEventListeners() {
             
             if (!description || !amount || !category_id) {
                 showNotification('Por favor completa todos los campos requeridos', 'error');
-                return;
-            }
+        return;
+      }
             
             try {
                 await addTransaction({ description, amount, type, category_id, comments });
@@ -1050,7 +1050,7 @@ function setupEventListeners() {
             if (currentMonth === 11) {
                 currentMonth = 0;
                 currentYear++;
-            } else {
+    } else {
                 currentMonth++;
             }
             updateMonthDisplay();
@@ -1274,6 +1274,10 @@ if (editAnnualBudgetsBtn && editAnnualBudgetsModal && editAnnualBudgetsForm) {
                 </div>
             `;
         }
+        // Cierre con ESC y click fuera
+        setupModalCloseEvents('edit-annual-budgets-modal', () => {
+            editAnnualBudgetsModal.classList.add('hidden');
+        });
     });
 }
 if (closeEditAnnualBudgetsBtn && editAnnualBudgetsModal) {
