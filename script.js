@@ -1543,4 +1543,5 @@ if (document.getElementById('app-container')) {
 }
 
 window.editTransaction = editTransaction;
+window.deleteCategory = deleteCategory;
 
