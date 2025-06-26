@@ -111,7 +111,19 @@ function renderUsersTable(users) {
         `;
         usersBody.appendChild(tr);
     });
-    // Delegar evento para guardar rol
+}
+
+// Agregar el event listener solo una vez al cargar la página
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupUsersTableListener);
+} else {
+    setupUsersTableListener();
+}
+function setupUsersTableListener() {
+    const usersBody = document.getElementById('users-table-body');
+    if (!usersBody) return;
+    if (usersBody._listenerAdded) return;
+    usersBody._listenerAdded = true;
     usersBody.addEventListener('click', async (e) => {
         if (e.target.classList.contains('save-role-btn')) {
             const userId = e.target.getAttribute('data-user-id');
