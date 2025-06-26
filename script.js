@@ -1274,11 +1274,15 @@ if (navAnnual) {
 // Al cambiar el año, refrescar el gráfico si la vista anual está visible
 const yearSelector = document.getElementById('year-selector');
 if (yearSelector) {
-    yearSelector.addEventListener('change', () => {
+    yearSelector.addEventListener('change', async () => {
+        currentYear = parseInt(yearSelector.value, 10);
+        // Si la vista anual está visible, refresca el gráfico anual
         const annualView = document.getElementById('annual-dashboard-view');
         if (annualView && !annualView.classList.contains('hidden')) {
-            refreshAnnualChartUI();
+            await refreshAnnualChartUI();
         }
+        // Siempre refresca la UI mensual para el año seleccionado
+        await refreshAllMonthlyUI();
     });
 }
 
