@@ -71,7 +71,6 @@ async function fetchAllAdminData() {
         }
         const data = await response.json();
         renderUsersTable(data.users || []);
-        renderDefaultCategoriesTable(data.categories || []);
     } catch (error) {
         console.error(error);
         alert(error.message);
@@ -149,22 +148,6 @@ setupUsersTableListener = function() {
                 showNotification('Error al eliminar usuario', 'error');
             }
         }
-    });
-}
-
-// Renderizar tabla de categorías por defecto
-function renderDefaultCategoriesTable(categories) {
-    const catBody = document.getElementById('default-categories-table-body');
-    if (!catBody) return;
-    catBody.innerHTML = '';
-    categories.forEach(cat => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${cat.id}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${cat.name}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">(próximas acciones)</td>
-        `;
-        catBody.appendChild(tr);
     });
 }
 
