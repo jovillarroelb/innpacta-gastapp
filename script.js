@@ -1558,6 +1558,6 @@ if (document.getElementById('app-container')) {
     initializeApp();
 }
 
+window.deleteTransaction = deleteTransaction;
 window.editTransaction = editTransaction;
-window.deleteCategory = deleteCategory;
 
