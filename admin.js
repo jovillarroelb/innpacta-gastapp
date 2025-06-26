@@ -91,14 +91,13 @@ function renderUsersTable(users) {
             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${user.last_name}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${user.email}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                <select data-user-id="${user.id}" class="role-select border rounded px-2 py-1">
+                <select data-user-id="${user.id}" class="role-select border rounded px-2 py-1" disabled>
                     <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
                     <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
                 </select>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${new Date(user.created_at).toLocaleString()}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-2">
-                <button class="save-role-btn bg-blue-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Guardar</button>
                 <button class="reset-password-btn bg-yellow-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Resetear Contraseña</button>
                 <button class="delete-user-btn bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Eliminar</button>
             </td>
@@ -115,27 +114,7 @@ setupUsersTableListener = function() {
     usersBody._listenerAdded = true;
     usersBody.addEventListener('click', async (e) => {
         const userId = e.target.getAttribute('data-user-id');
-        if (e.target.classList.contains('save-role-btn')) {
-            const select = usersBody.querySelector(`select[data-user-id='${userId}']`);
-            const newRole = select.value;
-            if (!['user', 'admin'].includes(newRole)) return;
-            e.target.disabled = true;
-            try {
-                const res = await fetch(`/api/admin/users/${userId}/role`, {
-                    method: 'PATCH',
-                    headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ role: newRole })
-                });
-                if (!res.ok) throw new Error('Error al cambiar rol');
-                showNotification('Rol actualizado', 'success');
-            } catch (err) {
-                showNotification('Error al cambiar rol', 'error');
-            } finally {
-                e.target.disabled = false;
-            }
-        }
         if (e.target.classList.contains('reset-password-btn')) {
-            if (!confirm('¿Seguro que deseas resetear la contraseña de este usuario?')) return;
             e.target.disabled = true;
             try {
                 const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
@@ -144,8 +123,8 @@ setupUsersTableListener = function() {
                 });
                 if (!res.ok) throw new Error('Error al resetear contraseña');
                 const { newPassword } = await res.json();
-                // Mostrar y copiar la nueva contraseña
-                prompt('Nueva contraseña generada. Cópiala y compártela con el usuario:', newPassword);
+                // Mostrar la nueva contraseña en pantalla (alert o modal simple)
+                alert('Nueva contraseña generada para el usuario:\n\n' + newPassword + '\n\nCópiala y compártela con el usuario.');
                 try { await navigator.clipboard.writeText(newPassword); } catch {}
                 showNotification('Contraseña reseteada y copiada al portapapeles', 'success');
             } catch (err) {
@@ -164,7 +143,8 @@ setupUsersTableListener = function() {
                 });
                 if (!res.ok) throw new Error('Error al eliminar usuario');
                 showNotification('Usuario eliminado', 'success');
-                e.target.closest('tr').remove();
+                // Refrescar tabla tras eliminar
+                fetchAllAdminData();
             } catch (err) {
                 showNotification('Error al eliminar usuario', 'error');
             }
