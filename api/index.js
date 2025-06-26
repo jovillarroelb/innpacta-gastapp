@@ -104,8 +104,8 @@ app.post('/auth/register', async (req, res) => {
             const now = new Date();
             const monthId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             await client.query(
-                'INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3)',
-                [userId, monthId, 0]
+                'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3)',
+                [userId, 0, monthId]
             );
             // Generar JWT
             const token = jwt.sign(
@@ -184,7 +184,7 @@ app.get('/api/data/:monthId', async (req, res) => {
             .from('budgets')
             .select('amount')
             .eq('user_id', userId)
-            .eq('month_id', monthId);
+            .eq('month', monthId);
         if (budgetError) throw budgetError;
         
         // Obtener transacciones (con nombre de categoría)
@@ -192,7 +192,7 @@ app.get('/api/data/:monthId', async (req, res) => {
             .from('transactions')
             .select('*, categories(name)')
             .eq('user_id', userId)
-            .eq('month_id', monthId)
+            .eq('month', monthId)
             .order('date', { ascending: false });
         if (txError) throw txError;
         
@@ -237,7 +237,7 @@ app.post('/api/transactions', async (req, res) => {
                 type, 
                 category_id: categoryId, 
                 date, 
-                month_id: monthId, 
+                month: monthId, 
                 comments, 
                 user_id: userId 
             }])
@@ -277,10 +277,10 @@ app.post('/api/budget', async (req, res) => {
             .from('budgets')
             .upsert([{ 
                 user_id: userId, 
-                month_id: monthId, 
+                month: monthId, 
                 amount: parseFloat(amount) 
             }], { 
-                onConflict: ['user_id', 'month_id'] 
+                onConflict: ['user_id', 'month'] 
             });
         if (error) throw error;
         res.status(200).json({ message: "Presupuesto guardado exitosamente" });
@@ -396,7 +396,7 @@ app.get('/api/budgets', async (req, res) => {
     const userId = req.user.id;
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT * FROM budgets WHERE user_id = $1 ORDER BY month_id', [userId]);
+        const result = await client.query('SELECT * FROM budgets WHERE user_id = $1 ORDER BY month', [userId]);
         client.release();
         res.status(200).json(result.rows);
     } catch (error) {
@@ -413,8 +413,8 @@ app.put('/api/budgets', async (req, res) => {
         const client = await pool.connect();
         for (const b of budgets) {
             await client.query(
-                'INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3) ON CONFLICT (user_id, month_id) DO UPDATE SET amount = EXCLUDED.amount',
-                [userId, b.month_id, b.amount]
+                'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3) ON CONFLICT (user_id, month) DO UPDATE SET amount = EXCLUDED.amount',
+                [userId, b.amount, b.month]
             );
         }
         client.release();
@@ -445,8 +445,8 @@ app.get('/api/transactions', async (req, res) => {
 // Crear transacción
 app.post('/api/transactions', async (req, res) => {
     const userId = req.user.id;
-    const { description, amount, type, category_id, date, month_id, comments } = req.body;
-    if (!description || !amount || !type || !date || !month_id) {
+    const { description, amount, type, category_id, date, month, comments } = req.body;
+    if (!description || !amount || !type || !date || !month) {
         return res.status(400).json({ message: 'Faltan campos requeridos', code: 'MISSING_REQUIRED_FIELDS' });
     }
     if (!['income', 'expense'].includes(type)) {
@@ -455,8 +455,8 @@ app.post('/api/transactions', async (req, res) => {
     try {
         const client = await pool.connect();
         const result = await client.query(
-            `INSERT INTO transactions (user_id, description, amount, type, category_id, date, month_id, comments) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [userId, description, parseFloat(amount), type, category_id || null, date, month_id, comments]
+            `INSERT INTO transactions (user_id, description, amount, type, category_id, date, month, comments) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [userId, description, parseFloat(amount), type, category_id || null, date, month, comments]
         );
         client.release();
         res.status(201).json(result.rows[0]);
