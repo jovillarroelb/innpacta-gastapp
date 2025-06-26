@@ -1682,6 +1682,11 @@ if (profileForm) {
         const firstName = document.getElementById('profile-firstname').value.trim();
         const lastName = document.getElementById('profile-lastname').value.trim();
         const password = document.getElementById('profile-password').value;
+        const passwordRepeat = document.getElementById('profile-password-repeat').value;
+        if (password && password !== passwordRepeat) {
+            showNotification('Las contraseñas no coinciden', 'error');
+            return;
+        }
         const token = localStorage.getItem('jwt_token');
         if (!token) return;
         const payload = JSON.parse(atob(token.split('.')[1]));
