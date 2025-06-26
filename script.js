@@ -1323,45 +1323,40 @@ async function getAnnualData(selectedYear) {
     try {
         const token = localStorage.getItem('jwt_token');
         if (!token) throw new Error('No hay sesión activa');
-        const response = await fetch('/api/budgets', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+
+        // 1. Obtener todos los presupuestos del usuario
+        const budgetsResponse = await fetch('/api/budgets', {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const budgets = await response.json();
-        const userId = currentUser.id;
-        // 1. Obtener presupuestos del año
-        const { data: budgetsData, error: errorBudgets } = await supabase
-            .from('budgets')
-            .select('month_id, amount')
-            .eq('user_id', userId)
-            .gte('month_id', `${selectedYear}-01`)
-            .lte('month_id', `${selectedYear}-12`);
-        if (errorBudgets) throw errorBudgets;
-        // 2. Obtener transacciones del año
-        const { data: transactions, error: errorTx } = await supabase
-            .from('transactions')
-            .select('amount, type, month_id')
-            .eq('user_id', userId)
-            .gte('month_id', `${selectedYear}-01`)
-            .lte('month_id', `${selectedYear}-12`);
-        if (errorTx) throw errorTx;
-        // 3. Procesar datos por mes
+        if (!budgetsResponse.ok) throw new Error('Error al obtener presupuestos');
+        const budgets = await budgetsResponse.json();
+
+        // 2. Obtener todas las transacciones del usuario
+        const txResponse = await fetch('/api/transactions', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!txResponse.ok) throw new Error('Error al obtener transacciones');
+        const transactions = await txResponse.json();
+
+        // 3. Filtrar por año seleccionado
+        const budgetsData = budgets.filter(b => b.month.startsWith(selectedYear));
+        const transactionsData = transactions.filter(t => t.month.startsWith(selectedYear));
+
+        // 4. Procesar datos por mes
         const gastosPorMes = Array(12).fill(0);
         const presupuestosPorMes = Array(12).fill(0);
+
         budgetsData.forEach(b => {
-            const mes = parseInt(b.month_id.split('-')[1], 10) - 1;
+            const mes = parseInt(b.month.split('-')[1], 10) - 1;
             presupuestosPorMes[mes] = b.amount;
         });
-        transactions.forEach(t => {
+        transactionsData.forEach(t => {
             if (t.type === 'expense') {
-                const mes = parseInt(t.month_id.split('-')[1], 10) - 1;
+                const mes = parseInt(t.month.split('-')[1], 10) - 1;
                 gastosPorMes[mes] += t.amount;
             }
         });
+
         return { gastosPorMes, presupuestosPorMes };
     } catch (error) {
         console.error('Error al obtener datos anuales:', error);
