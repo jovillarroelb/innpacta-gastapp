@@ -914,6 +914,56 @@ function populateYearSelector() {
   yearSelector.value = (current >= 2025 && current <= 2030) ? current : 2025;
 }
 
+// === ACTUALIZACIÓN DE TOTALES MENSUALES ===
+async function updateMonthlyTotals() {
+    // Obtener transacciones y presupuesto del mes actual
+    const [transactions, budgets] = await Promise.all([
+        getTransactions(),
+        getBudgets()
+    ]);
+    // Calcular totales
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    transactions.forEach(tx => {
+        if (tx.type === 'income') totalIncome += tx.amount;
+        if (tx.type === 'expense') totalExpenses += tx.amount;
+    });
+    const monthlyBudget = budgets.length > 0 ? budgets[0].amount : 0;
+    const balance = totalIncome - totalExpenses;
+    // Actualizar DOM
+    const elIncome = document.getElementById('total-income');
+    const elExpenses = document.getElementById('total-expenses');
+    const elBudget = document.getElementById('monthly-budget-display');
+    const elBalance = document.getElementById('remaining-budget');
+    if (elIncome) elIncome.textContent = formatCurrency(totalIncome);
+    if (elExpenses) elExpenses.textContent = formatCurrency(totalExpenses);
+    if (elBudget) elBudget.textContent = formatCurrency(monthlyBudget);
+    if (elBalance) elBalance.textContent = formatCurrency(balance);
+    // Opcional: color del balance
+    if (elBalance) {
+        elBalance.classList.remove('text-green-600', 'text-red-600', 'text-gray-800');
+        if (balance > 0) elBalance.classList.add('text-green-600');
+        else if (balance < 0) elBalance.classList.add('text-red-600');
+        else elBalance.classList.add('text-gray-800');
+    }
+}
+// Llamar updateMonthlyTotals tras refrescar datos del mes
+async function refreshAllMonthlyUI() {
+    await Promise.all([
+        refreshCategoriesUI(),
+        refreshBudgetsUI(),
+        refreshTransactionsUI(),
+        refreshChartsUI()
+    ]);
+    await updateMonthlyTotals();
+}
+// Reemplazar llamadas a refresh...UI por refreshAllMonthlyUI en initializeApp y donde corresponda
+const originalInitializeApp = initializeApp;
+initializeApp = async function() {
+    await originalInitializeApp();
+    await refreshAllMonthlyUI();
+};
+
 // Función para inicializar la aplicación principal
 async function initializeApp() {
     console.log('🚀 Inicializando aplicación...');
