@@ -516,26 +516,26 @@ function renderTransactionList(transactions) {
                 <h4 class="font-semibold text-gray-800">${transaction.description}</h4>
                 <p class="text-sm text-gray-500">${transaction.categories?.name || 'Sin categoría'}</p>
                 ${transaction.comments ? `<p class="text-xs text-gray-400 mt-1">${transaction.comments}</p>` : ''}
-                </div>
+            </div>
             <div class="text-right flex items-center">
                 <div class="mr-3">
                     <p class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
                         ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
                     </p>
                     <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
-                        </div>
+                </div>
                 <div class="flex space-x-1">
-                    <button class="btn-action btn-edit" onclick="editTransaction(${transaction.id})" title="Editar">
+                    <button class="btn-action btn-edit" onclick="editTransaction('${transaction._id}')" title="Editar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                </button>
-                    <button class="btn-action btn-delete" onclick="deleteTransaction(${transaction.id})" title="Eliminar">
+                        </svg>
+                    </button>
+                    <button class="btn-action btn-delete" onclick="deleteTransaction('${transaction._id}')" title="Eliminar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                </button>
-            </div>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     `).join('');
@@ -826,8 +826,8 @@ async function editTransaction(transactionId) {
     }
     const { data: txs, error: txError } = await supabase
         .from('transactions')
-        .select('id, description, comments, category_id')
-        .eq('id', transactionId)
+        .select('_id, description, comments, category_id')
+        .eq('_id', transactionId)
         .eq('user_id', session.user.id)
         .limit(1);
     if (txError) {
@@ -898,11 +898,11 @@ if (editTransactionForm) {
                 showNotification('No hay sesión activa', 'error');
                 return;
             }
-            console.log('[editTransactionForm] update', { description: desc, category_id: catId, comments, id: currentEditTransactionId, user_id: session.user.id });
+            console.log('[editTransactionForm] update', { description: desc, category_id: catId, comments, _id: currentEditTransactionId, user_id: session.user.id });
             const { error: updateError } = await supabase
                 .from('transactions')
                 .update({ description: desc, category_id: catId, comments })
-                .eq('id', currentEditTransactionId)
+                .eq('_id', currentEditTransactionId)
                 .eq('user_id', session.user.id);
             if (updateError) {
                 showNotification('Error al actualizar transacción', 'error');
@@ -927,25 +927,24 @@ function reassignCategory(transactionId) {
 
 // Función para eliminar transacción
 async function deleteTransaction(transactionId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta transacción?')) return;
-    
+    if (!confirm('¿Estás seguro de que deseas eliminar esta transacción?')) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        showNotification('No hay sesión activa', 'error');
+        return;
+    }
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('No hay sesión activa');
-        
         const { error } = await supabase
             .from('transactions')
             .delete()
-            .eq('id', transactionId);
-            
+            .eq('_id', transactionId)
+            .eq('user_id', session.user.id);
         if (error) throw error;
-        
-        showNotification('Transacción eliminada exitosamente', 'success');
-        await refreshTransactionsUI();
-        await refreshChartsUI();
+        showNotification('Transacción eliminada', 'success');
+        await refreshAllMonthlyUI();
     } catch (error) {
-        console.error('Error al eliminar transacción:', error);
         showNotification('Error al eliminar transacción', 'error');
+        console.error('[deleteTransaction] Error:', error);
     }
 }
 
