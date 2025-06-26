@@ -585,62 +585,75 @@ async function getChartData() {
     }
 }
 
-// Función para renderizar gráficos
+// Instancias globales de los gráficos mensuales
+let expensesChartInstance = null;
+let incomeChartInstance = null;
+
 function renderCharts(data) {
     console.log('📊 Renderizando gráficos con datos:', data);
-    
     // Gráfico de gastos por categoría
     const expensesCtx = document.getElementById('expenses-chart');
-    if (expensesCtx && Object.keys(data.expenses).length > 0) {
-        new Chart(expensesCtx, {
-        type: 'doughnut',
-        data: {
-                labels: Object.keys(data.expenses),
-            datasets: [{
-                    data: Object.values(data.expenses),
-                backgroundColor: [
-                        '#ef4444', '#f97316', '#eab308', '#84cc16',
-                        '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'
-                    ]
-            }]
-        },
-        options: {
-                responsive: true,
-                maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                        position: 'bottom'
-                }
-            }
+    if (expensesCtx) {
+        if (expensesChartInstance) {
+            expensesChartInstance.destroy();
         }
-    });
-}
-
-    // Gráfico de ingresos por categoría
-    const incomeCtx = document.getElementById('income-chart');
-    if (incomeCtx && Object.keys(data.income).length > 0) {
-        new Chart(incomeCtx, {
-        type: 'doughnut',
-        data: {
-                labels: Object.keys(data.income),
-            datasets: [{
-                    data: Object.values(data.income),
-                backgroundColor: [
-                        '#10b981', '#059669', '#047857', '#065f46',
-                        '#064e3b', '#022c22', '#042f2e', '#0f766e'
-                    ]
-            }]
-        },
-        options: {
-                responsive: true,
-                maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                        position: 'bottom'
+        if (Object.keys(data.expenses).length > 0) {
+            expensesChartInstance = new Chart(expensesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data.expenses),
+                    datasets: [{
+                        data: Object.values(data.expenses),
+                        backgroundColor: [
+                            '#ef4444', '#f97316', '#eab308', '#84cc16',
+                            '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
                     }
                 }
-            }
-        });
+            });
+        } else {
+            expensesCtx.getContext('2d').clearRect(0, 0, expensesCtx.width, expensesCtx.height);
+            expensesChartInstance = null;
+        }
+    }
+    // Gráfico de ingresos por categoría
+    const incomeCtx = document.getElementById('income-chart');
+    if (incomeCtx) {
+        if (incomeChartInstance) {
+            incomeChartInstance.destroy();
+        }
+        if (Object.keys(data.income).length > 0) {
+            incomeChartInstance = new Chart(incomeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data.income),
+                    datasets: [{
+                        data: Object.values(data.income),
+                        backgroundColor: [
+                            '#10b981', '#059669', '#047857', '#065f46',
+                            '#064e3b', '#022c22', '#042f2e', '#0f766e'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        } else {
+            incomeCtx.getContext('2d').clearRect(0, 0, incomeCtx.width, incomeCtx.height);
+            incomeChartInstance = null;
+        }
     }
 }
 
