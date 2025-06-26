@@ -70,13 +70,70 @@ async function fetchAllAdminData() {
             throw new Error(`Error ${response.status} al cargar los datos del mantenedor.`);
         }
         const data = await response.json();
-        renderTables(data);
+        renderAllAdminTables(data);
     } catch (error) {
         console.error(error);
         alert(error.message);
     } finally {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
+}
+
+function renderAllAdminTables(data) {
+    renderUsersTable(data.users || []);
+    renderTables({
+        transactions: data.transactions || [],
+        budgets: data.budgets || [],
+        categories: data.categories || []
+    });
+}
+
+function renderUsersTable(users) {
+    const usersBody = document.getElementById('users-table-body');
+    if (!usersBody) return;
+    usersBody.innerHTML = '';
+    users.forEach(user => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${user.first_name}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${user.last_name}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${user.email}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                <select data-user-id="${user.id}" class="role-select border rounded px-2 py-1">
+                    <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                </select>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${new Date(user.created_at).toLocaleString()}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                <button class="save-role-btn bg-blue-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Guardar</button>
+            </td>
+        `;
+        usersBody.appendChild(tr);
+    });
+    // Delegar evento para guardar rol
+    usersBody.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('save-role-btn')) {
+            const userId = e.target.getAttribute('data-user-id');
+            const select = usersBody.querySelector(`select[data-user-id='${userId}']`);
+            const newRole = select.value;
+            if (!['user', 'admin'].includes(newRole)) return;
+            e.target.disabled = true;
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/role`, {
+                    method: 'PATCH',
+                    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newRole })
+                });
+                if (!res.ok) throw new Error('Error al cambiar rol');
+                showNotification('Rol actualizado', 'success');
+            } catch (err) {
+                showNotification('Error al cambiar rol', 'error');
+            } finally {
+                e.target.disabled = false;
+            }
+        }
+    });
 }
 
 function renderTables(data) {
@@ -151,65 +208,3 @@ function refreshBudgetsUI() {
 }
 
 // Llama a estas funciones tras agregar/eliminar
-
-document.addEventListener('DOMContentLoaded', () => {
-    const tableBody = document.querySelector('#users-table tbody');
-    if (!tableBody) return;
-    let currentUserId = null;
-
-    // Obtener usuario actual (decodificando JWT)
-    if (token) {
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            currentUserId = payload.sub;
-        } catch {}
-    }
-
-    // Cargar usuarios
-    fetch('/api/admin/users', {
-        headers: authHeaders
-    })
-    .then(res => res.json())
-    .then(users => {
-        tableBody.innerHTML = '';
-        users.forEach(user => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${user.first_name}</td>
-                <td>${user.last_name}</td>
-                <td>${user.email}</td>
-                <td>
-                    <select ${user.id === currentUserId ? 'disabled' : ''} data-user-id="${user.id}">
-                        <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
-                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
-                    </select>
-                </td>
-                <td>${new Date(user.created_at).toLocaleString()}</td>
-                <td>
-                    <button ${user.id === currentUserId ? 'disabled' : ''} data-user-id="${user.id}" class="save-role-btn">Guardar</button>
-                </td>
-            `;
-            tableBody.appendChild(tr);
-        });
-    });
-
-    // Delegar evento para guardar rol
-    tableBody.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('save-role-btn')) {
-            const userId = e.target.getAttribute('data-user-id');
-            const select = tableBody.querySelector(`select[data-user-id='${userId}']`);
-            const newRole = select.value;
-            if (!['user', 'admin'].includes(newRole)) return;
-            e.target.disabled = true;
-            await fetch(`/api/admin/users/${userId}/role`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ role: newRole })
-            });
-            e.target.disabled = false;
-        }
-    });
-});

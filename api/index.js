@@ -595,6 +595,28 @@ app.get('/api/version', (req, res) => {
     res.json({ version });
 });
 
+// Endpoint para obtener todos los datos para el admin (usuarios, transacciones, presupuestos, categorías)
+app.get('/api/admin/all-data', authMiddleware, adminOnly, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const usersResult = await client.query('SELECT id, first_name, last_name, email, role, created_at FROM users ORDER BY created_at DESC');
+        const transactionsResult = await client.query('SELECT t.*, c.name as category_name FROM transactions t LEFT JOIN categories c ON t.category_id = c.id ORDER BY t.date DESC');
+        const budgetsResult = await client.query('SELECT * FROM budgets ORDER BY user_id, month');
+        const categoriesResult = await client.query('SELECT * FROM categories ORDER BY user_id, name');
+        res.status(200).json({
+            users: usersResult.rows,
+            transactions: transactionsResult.rows,
+            budgets: budgetsResult.rows,
+            categories: categoriesResult.rows
+        });
+    } catch (error) {
+        console.error('Error en /api/admin/all-data:', error);
+        res.status(500).json({ message: 'Error al obtener datos para el admin.' });
+    } finally {
+        client.release();
+    }
+});
+
 // Middleware de manejo de errores global
 app.use((error, req, res, next) => {
     console.error('Error no manejado:', error);
