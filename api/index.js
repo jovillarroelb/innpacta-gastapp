@@ -617,6 +617,40 @@ app.get('/api/admin/all-data', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
+// Resetear contraseña de usuario (solo admin)
+app.post('/api/admin/users/:id/reset-password', authMiddleware, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    // Generar nueva contraseña aleatoria segura
+    const newPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-2).toUpperCase();
+    const hashed = await bcrypt.hash(newPassword, 10);
+    try {
+        const client = await pool.connect();
+        const result = await client.query('UPDATE users SET password = $1 WHERE id = $2 RETURNING id', [hashed, id]);
+        client.release();
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+        res.status(200).json({ newPassword });
+    } catch (error) {
+        console.error('Error al resetear contraseña:', error);
+        res.status(500).json({ message: 'Error al resetear contraseña.' });
+    }
+});
+
+// Eliminar usuario (solo admin)
+app.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const client = await pool.connect();
+        await client.query('DELETE FROM users WHERE id = $1', [id]);
+        client.release();
+        res.status(200).json({ message: 'Usuario eliminado.' });
+    } catch (error) {
+        console.error('Error al eliminar usuario:', error);
+        res.status(500).json({ message: 'Error al eliminar usuario.' });
+    }
+});
+
 // Middleware de manejo de errores global
 app.use((error, req, res, next) => {
     console.error('Error no manejado:', error);

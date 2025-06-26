@@ -70,22 +70,14 @@ async function fetchAllAdminData() {
             throw new Error(`Error ${response.status} al cargar los datos del mantenedor.`);
         }
         const data = await response.json();
-        renderAllAdminTables(data);
+        renderUsersTable(data.users || []);
+        renderDefaultCategoriesTable(data.categories || []);
     } catch (error) {
         console.error(error);
         alert(error.message);
     } finally {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
-}
-
-function renderAllAdminTables(data) {
-    renderUsersTable(data.users || []);
-    renderTables({
-        transactions: data.transactions || [],
-        budgets: data.budgets || [],
-        categories: data.categories || []
-    });
 }
 
 function renderUsersTable(users) {
@@ -105,28 +97,25 @@ function renderUsersTable(users) {
                 </select>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${new Date(user.created_at).toLocaleString()}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 flex gap-2">
                 <button class="save-role-btn bg-blue-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Guardar</button>
+                <button class="reset-password-btn bg-yellow-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Resetear Contraseña</button>
+                <button class="delete-user-btn bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Eliminar</button>
             </td>
         `;
         usersBody.appendChild(tr);
     });
 }
 
-// Agregar el event listener solo una vez al cargar la página
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupUsersTableListener);
-} else {
-    setupUsersTableListener();
-}
-function setupUsersTableListener() {
+// Listener único para acciones de usuario
+setupUsersTableListener = function() {
     const usersBody = document.getElementById('users-table-body');
     if (!usersBody) return;
     if (usersBody._listenerAdded) return;
     usersBody._listenerAdded = true;
     usersBody.addEventListener('click', async (e) => {
+        const userId = e.target.getAttribute('data-user-id');
         if (e.target.classList.contains('save-role-btn')) {
-            const userId = e.target.getAttribute('data-user-id');
             const select = usersBody.querySelector(`select[data-user-id='${userId}']`);
             const newRole = select.value;
             if (!['user', 'admin'].includes(newRole)) return;
@@ -145,64 +134,58 @@ function setupUsersTableListener() {
                 e.target.disabled = false;
             }
         }
+        if (e.target.classList.contains('reset-password-btn')) {
+            if (!confirm('¿Seguro que deseas resetear la contraseña de este usuario?')) return;
+            e.target.disabled = true;
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+                    method: 'POST',
+                    headers: { ...authHeaders, 'Content-Type': 'application/json' }
+                });
+                if (!res.ok) throw new Error('Error al resetear contraseña');
+                const { newPassword } = await res.json();
+                // Mostrar y copiar la nueva contraseña
+                prompt('Nueva contraseña generada. Cópiala y compártela con el usuario:', newPassword);
+                try { await navigator.clipboard.writeText(newPassword); } catch {}
+                showNotification('Contraseña reseteada y copiada al portapapeles', 'success');
+            } catch (err) {
+                showNotification('Error al resetear contraseña', 'error');
+            } finally {
+                e.target.disabled = false;
+            }
+        }
+        if (e.target.classList.contains('delete-user-btn')) {
+            if (!confirm('¿Seguro que deseas eliminar este usuario? Esta acción es irreversible.')) return;
+            e.target.disabled = true;
+            try {
+                const res = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: authHeaders
+                });
+                if (!res.ok) throw new Error('Error al eliminar usuario');
+                showNotification('Usuario eliminado', 'success');
+                e.target.closest('tr').remove();
+            } catch (err) {
+                showNotification('Error al eliminar usuario', 'error');
+            }
+        }
     });
 }
 
-function renderTables(data) {
-    const { transactions, budgets, categories } = data;
-
-    const transactionsBody = document.getElementById('transactions-table-body');
-    transactionsBody.innerHTML = '';
-    if (transactions && transactions.length > 0) {
-        transactions.forEach(t => {
-            const row = transactionsBody.insertRow();
-            row.className = 'hover:bg-slate-50 transition-colors';
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${t._id}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${t.user_id}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${t.month_id}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${t.description}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${t.comments || ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">${formatCurrency(t.amount)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${t.type}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${t.category_name || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${new Date(t.date).toLocaleDateString('es-CL')}</td>
-            `;
-        });
-    } else {
-        transactionsBody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-slate-500">No hay transacciones registradas.</td></tr>';
-    }
-
-    const budgetsBody = document.getElementById('budgets-table-body');
-    budgetsBody.innerHTML = '';
-    if (budgets && budgets.length > 0) {
-        budgets.forEach(b => {
-            const row = budgetsBody.insertRow();
-            row.className = 'hover:bg-slate-50 transition-colors';
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-mono">${b.user_id}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${b.month_id}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-right">${formatCurrency(b.amount)}</td>
-            `;
-        });
-    } else {
-        budgetsBody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-slate-500">No hay presupuestos definidos.</td></tr>';
-    }
-
-    const categoriesBody = document.getElementById('categories-table-body');
-    categoriesBody.innerHTML = '';
-     if (categories && categories.length > 0) {
-        categories.forEach(c => {
-            const row = categoriesBody.insertRow();
-            row.className = 'hover:bg-slate-50 transition-colors';
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${c.id}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${c.name}</td>
-            `;
-        });
-    } else {
-        categoriesBody.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-slate-500">No hay categorías.</td></tr>';
-    }
+// Renderizar tabla de categorías por defecto
+function renderDefaultCategoriesTable(categories) {
+    const catBody = document.getElementById('default-categories-table-body');
+    if (!catBody) return;
+    catBody.innerHTML = '';
+    categories.forEach(cat => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${cat.id}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${cat.name}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">(próximas acciones)</td>
+        `;
+        catBody.appendChild(tr);
+    });
 }
 
 // Ejemplo para un formulario:
