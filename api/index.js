@@ -156,8 +156,7 @@ app.post('/api/transactions', async (req, res) => {
                 date, 
                 month_id: monthId, 
                 comments, 
-                user_id: userId, 
-                user_id_legacy: userId 
+                user_id: userId 
             }])
             .select();
         if (error) throw error;
