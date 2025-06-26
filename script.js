@@ -1004,6 +1004,7 @@ async function deleteTransaction(transactionId) {
         }
         showNotification('Transacción eliminada', 'success');
         await refreshAllMonthlyUI();
+        await updateMonthlyTotals();
     } catch (error) {
         showNotification('Error al eliminar transacción', 'error');
         console.error('[deleteTransaction] Error:', error);
@@ -1030,6 +1031,7 @@ async function addTransaction(transactionData) {
         showNotification('Transacción agregada exitosamente', 'success');
         await refreshTransactionsUI();
         await refreshChartsUI();
+        await updateMonthlyTotals();
         return await response.json();
     } catch (error) {
         console.error('Error al agregar transacción:', error);
