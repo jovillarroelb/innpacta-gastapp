@@ -1344,14 +1344,15 @@ async function getAnnualData(selectedYear) {
         const presupuestosPorMes = Array(12).fill(0);
         budgetsData.forEach(b => {
             const mes = parseInt(b.month.split('-')[1], 10) - 1;
-            presupuestosPorMes[mes] = b.amount;
+            presupuestosPorMes[mes] = Number(b.amount) || 0;
         });
         transactionsData.forEach(t => {
             const mes = parseInt(t.month.split('-')[1], 10) - 1;
+            const monto = Number(t.amount) || 0;
             if (t.type === 'expense') {
-                gastosPorMes[mes] += t.amount;
+                gastosPorMes[mes] += monto;
             } else if (t.type === 'income') {
-                ingresosPorMes[mes] += t.amount;
+                ingresosPorMes[mes] += monto;
             }
         });
         return { gastosPorMes, ingresosPorMes, presupuestosPorMes };
@@ -1373,8 +1374,8 @@ function renderAnnualChart({ gastosPorMes, ingresosPorMes, presupuestosPorMes },
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
     ];
-    // Calcular balance mensual
-    const balancePorMes = ingresosPorMes.map((ing, i) => ing - gastosPorMes[i]);
+    // Calcular balance mensual asegurando números
+    const balancePorMes = ingresosPorMes.map((ing, i) => (Number(ing) || 0) - (Number(gastosPorMes[i]) || 0));
     annualChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
