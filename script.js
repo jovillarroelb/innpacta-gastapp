@@ -807,9 +807,10 @@ async function editTransaction(transactionId) {
     const modal = document.getElementById('edit-transaction-modal');
     const form = document.getElementById('edit-transaction-form');
     const descInput = document.getElementById('edit-description');
+    const amountInput = document.getElementById('edit-amount');
     const catSelect = document.getElementById('edit-category');
     const commentsInput = document.getElementById('edit-comments');
-    if (!modal || !form || !descInput || !catSelect || !commentsInput) {
+    if (!modal || !form || !descInput || !amountInput || !catSelect || !commentsInput) {
         console.error('[editTransaction] Elementos del modal no encontrados');
         return;
     }
@@ -826,7 +827,7 @@ async function editTransaction(transactionId) {
     }
     const { data: txs, error: txError } = await supabase
         .from('transactions')
-        .select('_id, description, comments, category_id')
+        .select('_id, description, amount, comments, category_id')
         .eq('_id', transactionId)
         .eq('user_id', session.user.id)
         .limit(1);
@@ -842,6 +843,7 @@ async function editTransaction(transactionId) {
         return;
     }
     descInput.value = tx.description || '';
+    amountInput.value = tx.amount || '';
     commentsInput.value = tx.comments || '';
     // Poblar categorías
     const { data: categories, error: catError } = await supabase
@@ -882,10 +884,15 @@ if (editTransactionForm) {
             return;
         }
         const desc = document.getElementById('edit-description').value.trim();
+        const amount = parseFloat(document.getElementById('edit-amount').value);
         const catId = document.getElementById('edit-category').value;
         const comments = document.getElementById('edit-comments').value.trim();
         if (!desc) {
             showNotification('La descripción no puede estar vacía', 'error');
+            return;
+        }
+        if (!amount || amount <= 0) {
+            showNotification('El monto debe ser mayor a 0', 'error');
             return;
         }
         if (!catId) {
@@ -898,10 +905,10 @@ if (editTransactionForm) {
                 showNotification('No hay sesión activa', 'error');
                 return;
             }
-            console.log('[editTransactionForm] update', { description: desc, category_id: catId, comments, _id: currentEditTransactionId, user_id: session.user.id });
+            console.log('[editTransactionForm] update', { description: desc, amount: amount, category_id: catId, comments, _id: currentEditTransactionId, user_id: session.user.id });
             const { error: updateError } = await supabase
                 .from('transactions')
-                .update({ description: desc, category_id: catId, comments })
+                .update({ description: desc, amount: amount, category_id: catId, comments })
                 .eq('_id', currentEditTransactionId)
                 .eq('user_id', session.user.id);
             if (updateError) {
