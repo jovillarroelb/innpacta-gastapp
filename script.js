@@ -835,11 +835,12 @@ async function deleteCategory(categoryId) {
             alert(error.message || 'Error al eliminar la categoría');
             return;
         }
-        // Refresca la lista de categorías en el modal
+        // Refresca la lista de categorías en el modal y la UI principal
+        if (typeof loadCategoriesList === 'function') {
+            await loadCategoriesList();
+        }
         if (typeof refreshCategoriesUI === 'function') {
             await refreshCategoriesUI();
-        } else {
-            window.location.reload(); // fallback
         }
     } catch (error) {
         alert('Error al eliminar la categoría');
