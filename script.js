@@ -819,27 +819,30 @@ function setupCategoryForm() {
 
 // Función para eliminar categoría por usuario
 async function deleteCategory(categoryId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
+    if (!confirm('¿Estás seguro de eliminar esta categoría?')) return;
+    const token = localStorage.getItem('jwt_token');
     try {
-        const token = localStorage.getItem('jwt_token');
-        if (!token) throw new Error('No hay sesión activa');
         const response = await fetch('/api/categories', {
             method: 'DELETE',
             headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ id: categoryId })
         });
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const error = await response.json();
+            alert(error.message || 'Error al eliminar la categoría');
+            return;
         }
-        showNotification('Categoría eliminada exitosamente', 'success');
-        await refreshCategoriesUI();
-        await loadCategoriesList();
+        // Refresca la lista de categorías en el modal
+        if (typeof refreshCategoriesUI === 'function') {
+            await refreshCategoriesUI();
+        } else {
+            window.location.reload(); // fallback
+        }
     } catch (error) {
-        console.error('Error al eliminar categoría:', error);
-        showNotification('Error al eliminar categoría', 'error');
+        alert('Error al eliminar la categoría');
     }
 }
 
