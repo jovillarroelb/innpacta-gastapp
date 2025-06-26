@@ -145,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adminMenuItem) {
         adminMenuItem.addEventListener('click', function(e) {
             e.preventDefault();
+            sessionStorage.setItem('isAdminAuthenticated', 'true');
             window.location.href = 'admin.html';
         });
     }
