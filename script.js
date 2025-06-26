@@ -516,26 +516,26 @@ function renderTransactionList(transactions) {
                 <h4 class="font-semibold text-gray-800">${transaction.description}</h4>
                 <p class="text-sm text-gray-500">${transaction.categories?.name || 'Sin categoría'}</p>
                 ${transaction.comments ? `<p class="text-xs text-gray-400 mt-1">${transaction.comments}</p>` : ''}
-            </div>
+                </div>
             <div class="text-right flex items-center">
                 <div class="mr-3">
                     <p class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
                         ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
                     </p>
                     <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
-                </div>
+                        </div>
                 <div class="flex space-x-1">
                     <button class="btn-action btn-edit" onclick="editTransaction(${transaction.id})" title="Editar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                    </button>
+                    </svg>
+                </button>
                     <button class="btn-action btn-delete" onclick="deleteTransaction(${transaction.id})" title="Eliminar">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                    </button>
-                </div>
+                    </svg>
+                </button>
+            </div>
             </div>
         </div>
     `).join('');
@@ -594,25 +594,25 @@ function renderCharts(data) {
         }
         if (Object.keys(data.expenses).length > 0) {
             expensesChartInstance = new Chart(expensesCtx, {
-                type: 'doughnut',
-                data: {
+        type: 'doughnut',
+        data: {
                     labels: Object.keys(data.expenses),
-                    datasets: [{
+            datasets: [{
                         data: Object.values(data.expenses),
-                        backgroundColor: [
+                backgroundColor: [
                             '#ef4444', '#f97316', '#eab308', '#84cc16',
                             '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'
                         ]
-                    }]
-                },
-                options: {
+            }]
+        },
+        options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
+            plugins: {
                         legend: { position: 'bottom' }
-                    }
-                }
-            });
+            }
+        }
+    });
         } else {
             expensesCtx.getContext('2d').clearRect(0, 0, expensesCtx.width, expensesCtx.height);
             expensesChartInstance = null;
@@ -626,21 +626,21 @@ function renderCharts(data) {
         }
         if (Object.keys(data.income).length > 0) {
             incomeChartInstance = new Chart(incomeCtx, {
-                type: 'doughnut',
-                data: {
+        type: 'doughnut',
+        data: {
                     labels: Object.keys(data.income),
-                    datasets: [{
+            datasets: [{
                         data: Object.values(data.income),
-                        backgroundColor: [
+                backgroundColor: [
                             '#10b981', '#059669', '#047857', '#065f46',
                             '#064e3b', '#022c22', '#042f2e', '#0f766e'
                         ]
-                    }]
-                },
-                options: {
+            }]
+        },
+        options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
+            plugins: {
                         legend: { position: 'bottom' }
                     }
                 }
@@ -802,31 +802,58 @@ async function deleteCategory(categoryId) {
 // --- MODAL DE EDICIÓN DE TRANSACCIÓN ---
 let currentEditTransactionId = null;
 async function editTransaction(transactionId) {
+    console.log('[editTransaction] transactionId:', transactionId);
     currentEditTransactionId = transactionId;
     const modal = document.getElementById('edit-transaction-modal');
     const form = document.getElementById('edit-transaction-form');
     const descInput = document.getElementById('edit-description');
     const catSelect = document.getElementById('edit-category');
     const commentsInput = document.getElementById('edit-comments');
-    if (!modal || !form || !descInput || !catSelect || !commentsInput) return;
+    if (!modal || !form || !descInput || !catSelect || !commentsInput) {
+        console.error('[editTransaction] Elementos del modal no encontrados');
+        return;
+    }
+    if (!transactionId) {
+        showNotification('ID de transacción inválido', 'error');
+        console.error('[editTransaction] transactionId inválido:', transactionId);
+        return;
+    }
     // Obtener datos de la transacción
     const { data: { session } } = await supabase.auth.getSession();
-    const { data: txs } = await supabase
+    if (!session) {
+        showNotification('No hay sesión activa', 'error');
+        return;
+    }
+    const { data: txs, error: txError } = await supabase
         .from('transactions')
         .select('id, description, comments, category_id')
         .eq('id', transactionId)
         .eq('user_id', session.user.id)
         .limit(1);
+    if (txError) {
+        showNotification('Error al obtener transacción', 'error');
+        console.error('[editTransaction] Error al obtener transacción:', txError);
+        return;
+    }
     const tx = txs && txs.length > 0 ? txs[0] : null;
-    if (!tx) return;
+    if (!tx) {
+        showNotification('Transacción no encontrada', 'error');
+        console.error('[editTransaction] Transacción no encontrada para id:', transactionId);
+        return;
+    }
     descInput.value = tx.description || '';
     commentsInput.value = tx.comments || '';
     // Poblar categorías
-    const { data: categories } = await supabase
+    const { data: categories, error: catError } = await supabase
         .from('categories')
         .select('id, name')
         .eq('user_id', session.user.id)
         .order('name');
+    if (catError) {
+        showNotification('Error al obtener categorías', 'error');
+        console.error('[editTransaction] Error al obtener categorías:', catError);
+        return;
+    }
     catSelect.innerHTML = categories.map(cat => `<option value="${cat.id}" ${cat.id === tx.category_id ? 'selected' : ''}>${cat.name}</option>`).join('');
     // Mostrar modal
     modal.classList.remove('hidden');
@@ -849,22 +876,45 @@ const editTransactionForm = document.getElementById('edit-transaction-form');
 if (editTransactionForm) {
     editTransactionForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!currentEditTransactionId) return;
+        if (!currentEditTransactionId) {
+            showNotification('ID de transacción inválido', 'error');
+            console.error('[editTransactionForm] currentEditTransactionId inválido:', currentEditTransactionId);
+            return;
+        }
         const desc = document.getElementById('edit-description').value.trim();
         const catId = document.getElementById('edit-category').value;
         const comments = document.getElementById('edit-comments').value.trim();
+        if (!desc) {
+            showNotification('La descripción no puede estar vacía', 'error');
+            return;
+        }
+        if (!catId) {
+            showNotification('Debes seleccionar una categoría', 'error');
+            return;
+        }
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            await supabase
+            if (!session) {
+                showNotification('No hay sesión activa', 'error');
+                return;
+            }
+            console.log('[editTransactionForm] update', { description: desc, category_id: catId, comments, id: currentEditTransactionId, user_id: session.user.id });
+            const { error: updateError } = await supabase
                 .from('transactions')
                 .update({ description: desc, category_id: catId, comments })
                 .eq('id', currentEditTransactionId)
                 .eq('user_id', session.user.id);
+            if (updateError) {
+                showNotification('Error al actualizar transacción', 'error');
+                console.error('[editTransactionForm] Error al actualizar transacción:', updateError);
+                return;
+            }
             showNotification('Transacción actualizada', 'success');
             hideEditTransactionModal();
             await refreshAllMonthlyUI();
         } catch (error) {
-            showNotification('Error al actualizar transacción', 'error');
+            showNotification('Error inesperado al actualizar transacción', 'error');
+            console.error('[editTransactionForm] Error inesperado:', error);
         }
     });
 }
@@ -1171,7 +1221,7 @@ function setupEventListeners() {
             if (currentMonth === 11) {
                 currentMonth = 0;
                 currentYear++;
-            } else {
+    } else {
                 currentMonth++;
             }
             updateMonthDisplay();
