@@ -114,13 +114,18 @@ app.post('/auth/register', async (req, res) => {
                 ('Cuentas', $1)`,
                 [userId]
             );
-            // Poblar presupuestos por defecto (opcional: solo mes actual)
+            // Poblar presupuestos en 0 para cada mes del año actual
             const now = new Date();
-            const monthId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            await client.query(
-                'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3)',
-                [userId, 0, monthId]
-            );
+            const year = now.getFullYear();
+            const budgetInserts = [];
+            for (let m = 1; m <= 12; m++) {
+                const month = `${year}-${String(m).padStart(2, '0')}`;
+                budgetInserts.push(client.query(
+                    'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3)',
+                    [userId, 0, month]
+                ));
+            }
+            await Promise.all(budgetInserts);
             // Generar JWT
             const token = jwt.sign(
                 { sub: userId, email },

@@ -1323,53 +1323,49 @@ async function getAnnualData(selectedYear) {
     try {
         const token = localStorage.getItem('jwt_token');
         if (!token) throw new Error('No hay sesión activa');
-
         // 1. Obtener todos los presupuestos del usuario
         const budgetsResponse = await fetch('/api/budgets', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!budgetsResponse.ok) throw new Error('Error al obtener presupuestos');
         const budgets = await budgetsResponse.json();
-
         // 2. Obtener todas las transacciones del usuario
         const txResponse = await fetch('/api/transactions', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!txResponse.ok) throw new Error('Error al obtener transacciones');
         const transactions = await txResponse.json();
-
         // 3. Filtrar por año seleccionado
         const budgetsData = budgets.filter(b => b.month.startsWith(selectedYear));
         const transactionsData = transactions.filter(t => t.month.startsWith(selectedYear));
-
         // 4. Procesar datos por mes
         const gastosPorMes = Array(12).fill(0);
+        const ingresosPorMes = Array(12).fill(0);
         const presupuestosPorMes = Array(12).fill(0);
-
         budgetsData.forEach(b => {
             const mes = parseInt(b.month.split('-')[1], 10) - 1;
             presupuestosPorMes[mes] = b.amount;
         });
         transactionsData.forEach(t => {
+            const mes = parseInt(t.month.split('-')[1], 10) - 1;
             if (t.type === 'expense') {
-                const mes = parseInt(t.month.split('-')[1], 10) - 1;
                 gastosPorMes[mes] += t.amount;
+            } else if (t.type === 'income') {
+                ingresosPorMes[mes] += t.amount;
             }
         });
-
-        return { gastosPorMes, presupuestosPorMes };
+        return { gastosPorMes, ingresosPorMes, presupuestosPorMes };
     } catch (error) {
         console.error('Error al obtener datos anuales:', error);
-        return { gastosPorMes: Array(12).fill(0), presupuestosPorMes: Array(12).fill(0) };
+        return { gastosPorMes: Array(12).fill(0), ingresosPorMes: Array(12).fill(0), presupuestosPorMes: Array(12).fill(0) };
     }
 }
 
 // Renderiza el gráfico anual en el canvas 'annual-chart'
 let annualChartInstance = null;
-function renderAnnualChart({ gastosPorMes, presupuestosPorMes }, selectedYear) {
+function renderAnnualChart({ gastosPorMes, ingresosPorMes, presupuestosPorMes }, selectedYear) {
     const ctx = document.getElementById('annual-chart');
     if (!ctx) return;
-    // Destruir instancia previa si existe
     if (annualChartInstance) {
         annualChartInstance.destroy();
     }
@@ -1377,15 +1373,17 @@ function renderAnnualChart({ gastosPorMes, presupuestosPorMes }, selectedYear) {
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
     ];
+    // Calcular balance mensual
+    const balancePorMes = ingresosPorMes.map((ing, i) => ing - gastosPorMes[i]);
     annualChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: meses,
             datasets: [
                 {
-                    label: 'Gastos',
-                    data: gastosPorMes,
-                    backgroundColor: 'rgba(239,68,68,0.7)',
+                    label: 'Balance',
+                    data: balancePorMes,
+                    backgroundColor: 'rgba(16,185,129,0.7)',
                     borderRadius: 6,
                     maxBarThickness: 32
                 },
@@ -1410,7 +1408,7 @@ function renderAnnualChart({ gastosPorMes, presupuestosPorMes }, selectedYear) {
                 legend: { position: 'top' },
                 title: {
                     display: true,
-                    text: `Gastos vs. Presupuesto - ${selectedYear}`
+                    text: `Balance vs. Presupuesto - ${selectedYear}`
                 }
             },
             scales: {
@@ -1473,7 +1471,7 @@ if (editAnnualBudgetsBtn && editAnnualBudgetsModal && editAnnualBudgetsForm) {
         const selectedYear = yearSelector ? yearSelector.value : (new Date()).getFullYear();
         editAnnualYear.textContent = selectedYear;
         editAnnualBudgetsModal.classList.remove('hidden');
-        // Obtener presupuestos actuales
+        // Obtener presupuestos actuales (fetch actualizado SIEMPRE)
         const response = await fetch('/api/budgets', {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
@@ -1491,7 +1489,8 @@ if (editAnnualBudgetsBtn && editAnnualBudgetsModal && editAnnualBudgetsForm) {
         editAnnualBudgetsForm.innerHTML = '';
         for (let i = 0; i < 12; i++) {
             const monthId = `${selectedYear}-${String(i+1).padStart(2, '0')}`;
-            const presupuesto = budgets.find(b => b.month_id === monthId)?.amount || '';
+            // Si no hay presupuesto, mostrar 0
+            const presupuesto = budgets.find(b => b.month === monthId)?.amount ?? 0;
             editAnnualBudgetsForm.innerHTML += `
                 <div class="flex flex-col">
                     <label class="text-sm font-medium text-gray-700 mb-1">${meses[i]}</label>
