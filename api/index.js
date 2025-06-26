@@ -49,6 +49,7 @@ app.use((req, res, next) => {
 // Middleware de Autenticación usando jsonwebtoken con mejor manejo de errores
 const authMiddleware = (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
+    console.log('Token recibido:', token);
     if (!token) {
         return res.status(401).json({ 
             message: 'No se proporcionó token de autenticación.',
@@ -61,6 +62,7 @@ const authMiddleware = (req, res, next) => {
             algorithms: ['HS256'],
             issuer: 'supabase'
         });
+        console.log('Usuario decodificado:', decoded);
         req.user = { id: decoded.sub };
         next();
     } catch (err) {
