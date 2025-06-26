@@ -595,19 +595,17 @@ async function getChartData() {
     try {
         const transactions = await getTransactions();
         const categories = await getCategories();
-        
         const expensesByCategory = {};
         const incomeByCategory = {};
-        
         transactions.forEach(transaction => {
             const categoryName = transaction.category_name || 'Sin categoría';
+            const monto = Number(transaction.amount) || 0;
             if (transaction.type === 'expense') {
-                expensesByCategory[categoryName] = (expensesByCategory[categoryName] || 0) + transaction.amount;
-            } else {
-                incomeByCategory[categoryName] = (incomeByCategory[categoryName] || 0) + transaction.amount;
+                expensesByCategory[categoryName] = (expensesByCategory[categoryName] || 0) + monto;
+            } else if (transaction.type === 'income') {
+                incomeByCategory[categoryName] = (incomeByCategory[categoryName] || 0) + monto;
             }
         });
-        
         return {
             expenses: expensesByCategory,
             income: incomeByCategory,
@@ -1109,7 +1107,7 @@ async function updateMonthlyTotals() {
         if (tx.type === 'income') totalIncome += Number(tx.amount) || 0;
         if (tx.type === 'expense') totalExpenses += Number(tx.amount) || 0;
     });
-    const monthlyBudget = budgets.length > 0 ? budgets[0].amount : 0;
+    const monthlyBudget = budgets.length > 0 ? Number(budgets[0].amount) || 0 : 0;
     const balance = totalIncome - totalExpenses;
     // Actualizar DOM
     const elIncome = document.getElementById('total-income');
