@@ -139,6 +139,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch {}
     }
+
+    // Fix: Navegación admin sin reload
+    const adminMenuItem = document.querySelector('#admin-menu-item a');
+    if (adminMenuItem) {
+        adminMenuItem.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'admin.html';
+        });
+    }
 });
 
 // Función para inicializar la app correctamente
