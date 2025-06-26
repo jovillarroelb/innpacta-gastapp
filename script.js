@@ -1079,7 +1079,7 @@ function setupEventListeners() {
     
     if (prevMonthBtn) {
         console.log('✅ Botón de mes anterior encontrado');
-        prevMonthBtn.addEventListener('click', () => {
+        prevMonthBtn.addEventListener('click', async () => {
             if (currentMonth === 0) {
                 currentMonth = 11;
                 currentYear--;
@@ -1087,8 +1087,7 @@ function setupEventListeners() {
                 currentMonth--;
             }
             updateMonthDisplay();
-            refreshTransactionsUI();
-            refreshChartsUI();
+            await refreshAllMonthlyUI();
         });
     } else {
         console.log('❌ Botón de mes anterior no encontrado');
@@ -1096,16 +1095,15 @@ function setupEventListeners() {
     
     if (nextMonthBtn) {
         console.log('✅ Botón de mes siguiente encontrado');
-        nextMonthBtn.addEventListener('click', () => {
+        nextMonthBtn.addEventListener('click', async () => {
             if (currentMonth === 11) {
                 currentMonth = 0;
                 currentYear++;
-    } else {
+            } else {
                 currentMonth++;
             }
             updateMonthDisplay();
-            refreshTransactionsUI();
-            refreshChartsUI();
+            await refreshAllMonthlyUI();
         });
     } else {
         console.log('❌ Botón de mes siguiente no encontrado');
