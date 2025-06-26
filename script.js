@@ -1234,6 +1234,82 @@ if (yearSelector) {
     });
 }
 
+// === MODAL DE EDICIÓN DE PRESUPUESTOS ANUALES ===
+const editAnnualBudgetsBtn = document.getElementById('edit-annual-budgets-btn');
+const editAnnualBudgetsModal = document.getElementById('edit-annual-budgets-modal');
+const editAnnualBudgetsForm = document.getElementById('edit-annual-budgets-form');
+const closeEditAnnualBudgetsBtn = document.getElementById('close-edit-annual-budgets-btn');
+const saveAnnualBudgetsBtn = document.getElementById('save-annual-budgets-btn');
+const editAnnualYear = document.getElementById('edit-annual-year');
+
+if (editAnnualBudgetsBtn && editAnnualBudgetsModal && editAnnualBudgetsForm) {
+    editAnnualBudgetsBtn.addEventListener('click', async () => {
+        // Mostrar modal y poblar inputs
+        const yearSelector = document.getElementById('year-selector');
+        const selectedYear = yearSelector ? yearSelector.value : (new Date()).getFullYear();
+        editAnnualYear.textContent = selectedYear;
+        editAnnualBudgetsModal.classList.remove('hidden');
+        // Obtener presupuestos actuales
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session.user.id;
+        const { data: budgets } = await supabase
+            .from('budgets')
+            .select('month_id, amount')
+            .eq('user_id', userId)
+            .gte('month_id', `${selectedYear}-01`)
+            .lte('month_id', `${selectedYear}-12`);
+        // Poblar inputs
+        const meses = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+        editAnnualBudgetsForm.innerHTML = '';
+        for (let i = 0; i < 12; i++) {
+            const monthId = `${selectedYear}-${String(i+1).padStart(2, '0')}`;
+            const presupuesto = budgets.find(b => b.month_id === monthId)?.amount || '';
+            editAnnualBudgetsForm.innerHTML += `
+                <div class="flex flex-col">
+                    <label class="text-sm font-medium text-gray-700 mb-1">${meses[i]}</label>
+                    <input type="number" min="0" step="1000" name="${monthId}" value="${presupuesto}" class="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500" required />
+                </div>
+            `;
+        }
+    });
+}
+if (closeEditAnnualBudgetsBtn && editAnnualBudgetsModal) {
+    closeEditAnnualBudgetsBtn.addEventListener('click', () => {
+        editAnnualBudgetsModal.classList.add('hidden');
+    });
+}
+if (editAnnualBudgetsForm) {
+    editAnnualBudgetsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        saveAnnualBudgetsBtn.disabled = true;
+        const formData = new FormData(editAnnualBudgetsForm);
+        const updates = [];
+        for (let [monthId, amount] of formData.entries()) {
+            updates.push({ month_id: monthId, amount: parseInt(amount, 10) });
+        }
+        // Actualizar presupuestos en Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session.user.id;
+        try {
+            for (const upd of updates) {
+                await supabase
+                    .from('budgets')
+                    .upsert({ user_id: userId, month_id: upd.month_id, amount: upd.amount }, { onConflict: ['user_id', 'month_id'] });
+            }
+            showNotification('Presupuestos actualizados', 'success');
+            editAnnualBudgetsModal.classList.add('hidden');
+            refreshAnnualChartUI();
+        } catch (error) {
+            showNotification('Error al actualizar presupuestos', 'error');
+        } finally {
+            saveAnnualBudgetsBtn.disabled = false;
+        }
+    });
+}
+
 // Inicializar la aplicación cuando se carga la página
 if (document.getElementById('app-container')) {
     initializeApp();
