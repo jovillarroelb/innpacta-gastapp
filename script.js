@@ -116,6 +116,29 @@ document.addEventListener('DOMContentLoaded', () => {
         window.hideCategoryModal = hideCategoryModal;
         handleAppPage();
     }
+
+    const token = localStorage.getItem('jwt_token');
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            // Si el rol viene en el JWT, úsalo directamente
+            if (payload && payload.role === 'admin') {
+                document.getElementById('admin-menu-item').style.display = 'block';
+            } else if (payload && payload.sub) {
+                // Si no viene el rol, consulta a la API
+                fetch('/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(res => res.json())
+                .then(users => {
+                    const currentUser = users.find(u => u.id === payload.sub);
+                    if (currentUser && currentUser.role === 'admin') {
+                        document.getElementById('admin-menu-item').style.display = 'block';
+                    }
+                });
+            }
+        } catch {}
+    }
 });
 
 // Función para inicializar la app correctamente
