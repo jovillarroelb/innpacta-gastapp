@@ -479,9 +479,7 @@ async function getTransactions() {
     try {
         const token = localStorage.getItem('jwt_token');
         if (!token) throw new Error('No hay sesión activa');
-        
         const monthId = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-        
         const response = await fetch('/api/transactions', {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -490,9 +488,9 @@ async function getTransactions() {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const transactions = await response.json();
-        console.log('Transacciones obtenidas para usuario', currentUser.id, transactions);
-        return transactions || [];
+        const allTx = await response.json();
+        // Filtrar por mes y año seleccionados
+        return allTx.filter(tx => tx.month === monthId);
     } catch (error) {
         console.error('Error al obtener transacciones:', error);
         return [];
@@ -504,9 +502,7 @@ async function getBudgets() {
     try {
         const token = localStorage.getItem('jwt_token');
         if (!token) throw new Error('No hay sesión activa');
-        
         const monthId = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-        
         const response = await fetch('/api/budgets', {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -515,9 +511,9 @@ async function getBudgets() {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const budgets = await response.json();
-        console.log('Presupuestos obtenidos para usuario', currentUser.id, budgets);
-        return budgets || [];
+        const allBudgets = await response.json();
+        // Filtrar por mes y año seleccionados
+        return allBudgets.filter(b => b.month === monthId);
     } catch (error) {
         console.error('Error al obtener presupuestos:', error);
         return [];
@@ -1109,6 +1105,7 @@ async function updateMonthlyTotals() {
         if (tx.type === 'income') totalIncome += Number(tx.amount) || 0;
         if (tx.type === 'expense') totalExpenses += Number(tx.amount) || 0;
     });
+    // El presupuesto mensual es el mismo que el de la curva azul anual
     const monthlyBudget = budgets.length > 0 ? Number(budgets[0].amount) || 0 : 0;
     const balance = totalIncome - totalExpenses;
     // Actualizar DOM
@@ -1551,6 +1548,7 @@ if (editAnnualBudgetsForm) {
 // Inicializar la aplicación cuando se carga la página
 if (document.getElementById('app-container')) {
     initializeApp();
+    setupMonthYearListeners();
 }
 
 window.deleteTransaction = deleteTransaction;
@@ -1567,5 +1565,43 @@ function calcularTotalesPorCategoria(transactions, tipo) {
         totales[cat] += monto;
     });
     return totales;
+}
+
+// Al cambiar el mes o año, refrescar la UI mensual
+function setupMonthYearListeners() {
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+    const yearSelector = document.getElementById('year-selector');
+    if (prevMonthBtn) {
+        prevMonthBtn.addEventListener('click', async () => {
+            if (currentMonth === 0) {
+                currentMonth = 11;
+                currentYear--;
+            } else {
+                currentMonth--;
+            }
+            updateMonthDisplay();
+            await refreshAllMonthlyUI();
+        });
+    }
+    if (nextMonthBtn) {
+        nextMonthBtn.addEventListener('click', async () => {
+            if (currentMonth === 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else {
+                currentMonth++;
+            }
+            updateMonthDisplay();
+            await refreshAllMonthlyUI();
+        });
+    }
+    if (yearSelector) {
+        yearSelector.addEventListener('change', async () => {
+            currentYear = parseInt(yearSelector.value, 10);
+            updateMonthDisplay();
+            await refreshAllMonthlyUI();
+        });
+    }
 }
 
