@@ -1516,8 +1516,8 @@ if (editAnnualBudgetsForm) {
         saveAnnualBudgetsBtn.disabled = true;
         const formData = new FormData(editAnnualBudgetsForm);
         const updates = [];
-        for (let [monthId, amount] of formData.entries()) {
-            updates.push({ month_id: monthId, amount: parseInt(amount, 10) });
+        for (let [month, amount] of formData.entries()) {
+            updates.push({ month, amount: parseInt(amount, 10) });
         }
         // Actualizar presupuestos en Supabase
         const token = localStorage.getItem('jwt_token');
