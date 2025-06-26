@@ -1548,6 +1548,7 @@ if (editAnnualBudgetsForm) {
 // Inicializar la aplicación cuando se carga la página
 if (document.getElementById('app-container')) {
     initializeApp();
+    initializeMonthYearSelectors();
     setupMonthYearListeners();
 }
 
@@ -1603,5 +1604,41 @@ function setupMonthYearListeners() {
             await refreshAllMonthlyUI();
         });
     }
+}
+
+// Inicializar selectores de mes y año al cargar la app
+function initializeMonthYearSelectors() {
+    const monthSelector = document.getElementById('month-selector');
+    const yearSelector = document.getElementById('year-selector');
+    const now = new Date();
+    currentMonth = now.getMonth();
+    currentYear = now.getFullYear();
+    if (monthSelector) monthSelector.value = currentMonth;
+    if (yearSelector) yearSelector.value = currentYear;
+    // Listeners para cambios
+    if (monthSelector) {
+        monthSelector.addEventListener('change', async () => {
+            currentMonth = parseInt(monthSelector.value, 10);
+            updateMonthDisplay();
+            await refreshAllMonthlyUI();
+        });
+    }
+    if (yearSelector) {
+        yearSelector.addEventListener('change', async () => {
+            currentYear = parseInt(yearSelector.value, 10);
+            updateMonthDisplay();
+            await refreshAllMonthlyUI();
+        });
+    }
+}
+
+// Mostrar/ocultar selector de mes según la vista
+function showMonthlyView() {
+    toggleMonthSelector(true);
+    // ...código para mostrar la vista mensual...
+}
+function showAnnualView() {
+    toggleMonthSelector(false);
+    // ...código para mostrar la vista anual...
 }
 
