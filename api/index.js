@@ -224,46 +224,29 @@ app.get('/api/data/:monthId', async (req, res) => {
 });
 
 app.post('/api/transactions', async (req, res) => {
-    const { description, amount, type, categoryId, date, monthId, comments } = req.body;
     const userId = req.user.id;
-    
-    // Validación de datos requeridos
-    if (!description || !amount || !type || !date || !monthId) {
-        return res.status(400).json({ 
-            message: 'Faltan campos requeridos: description, amount, type, date, monthId',
-            code: 'MISSING_REQUIRED_FIELDS'
-        });
+    const { description, amount, type, category_id, date, month, comments } = req.body;
+
+    if (!description || !amount || !type || !date || !month) {
+        return res.status(400).json({ message: 'Faltan campos requeridos', code: 'MISSING_REQUIRED_FIELDS' });
     }
-    
+
     if (!['income', 'expense'].includes(type)) {
-        return res.status(400).json({ 
-            message: 'Tipo debe ser "income" o "expense"',
-            code: 'INVALID_TRANSACTION_TYPE'
-        });
+        return res.status(400).json({ message: 'Tipo debe ser "income" o "expense"', code: 'INVALID_TRANSACTION_TYPE' });
     }
-    
+
     try {
-        const { data, error } = await supabase
-            .from('transactions')
-            .insert([{ 
-                description, 
-                amount: parseFloat(amount), 
-                type, 
-                category_id: categoryId, 
-                date, 
-                month: monthId, 
-                comments, 
-                user_id: userId 
-            }])
-            .select();
-        if (error) throw error;
-        res.status(201).json(data[0]);
+        const client = await pool.connect();
+        const result = await client.query(
+            `INSERT INTO transactions (user_id, description, amount, type, category_id, date, month, comments)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [userId, description, parseFloat(amount), type, category_id || null, date, month, comments]
+        );
+        client.release();
+        res.status(201).json(result.rows[0]);
     } catch (error) {
-        console.error('Error en POST /api/transactions', error);
-        res.status(500).json({ 
-            message: 'Error al crear la transacción',
-            code: 'TRANSACTION_CREATION_ERROR'
-        });
+        console.error('Error al crear transacción:', error);
+        res.status(500).json({ message: 'Error al crear la transacción', code: 'TRANSACTION_CREATION_ERROR' });
     }
 });
 
@@ -453,30 +436,6 @@ app.get('/api/transactions', async (req, res) => {
     } catch (error) {
         console.error('Error en GET /api/transactions', error);
         res.status(500).json({ message: 'Error al obtener transacciones', code: 'TRANSACTIONS_FETCH_ERROR' });
-    }
-});
-
-// Crear transacción
-app.post('/api/transactions', async (req, res) => {
-    const userId = req.user.id;
-    const { description, amount, type, category_id, date, month, comments } = req.body;
-    if (!description || !amount || !type || !date || !month) {
-        return res.status(400).json({ message: 'Faltan campos requeridos', code: 'MISSING_REQUIRED_FIELDS' });
-    }
-    if (!['income', 'expense'].includes(type)) {
-        return res.status(400).json({ message: 'Tipo debe ser "income" o "expense"', code: 'INVALID_TRANSACTION_TYPE' });
-    }
-    try {
-        const client = await pool.connect();
-        const result = await client.query(
-            `INSERT INTO transactions (user_id, description, amount, type, category_id, date, month, comments) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [userId, description, parseFloat(amount), type, category_id || null, date, month, comments]
-        );
-        client.release();
-        res.status(201).json(result.rows[0]);
-    } catch (error) {
-        console.error('Error en POST /api/transactions', error);
-        res.status(500).json({ message: 'Error al crear la transacción', code: 'TRANSACTION_CREATION_ERROR' });
     }
 });
 
