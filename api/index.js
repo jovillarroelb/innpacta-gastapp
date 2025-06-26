@@ -60,7 +60,7 @@ const authMiddleware = (req, res, next) => {
         // Verifica el JWT con la clave pública de Supabase
         const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET, { 
             algorithms: ['HS256'],
-            issuer: 'supabase'
+            issuer: 'https://xrxnmcyyfvkiwjbdaxcq.supabase.co/auth/v1'
         });
         console.log('Usuario decodificado:', decoded);
         req.user = { id: decoded.sub };
