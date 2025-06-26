@@ -442,9 +442,22 @@ let currentYear = new Date().getFullYear();
 async function getCurrentUser() {
     const token = localStorage.getItem('jwt_token');
     if (!token) return null;
-    // Decodifica el JWT para obtener el userId y email (sin validar firma, solo para frontend)
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
+        // Si el JWT trae nombre y apellido, úsalos
+        if (payload.first_name && payload.last_name) {
+            return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name };
+        }
+        // Si no, consulta a la API
+        const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.ok) {
+            const users = await response.json();
+            const user = users.find(u => u.id === payload.sub || u.email === payload.email);
+            if (user) {
+                return { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name };
+            }
+        }
+        // Fallback solo con email
         return { id: payload.sub, email: payload.email };
     } catch {
         return null;
@@ -1162,8 +1175,13 @@ async function initializeApp() {
         const userAvatar = document.getElementById('user-avatar');
         
         if (mainTitle) mainTitle.textContent = 'Dashboard Financiero';
-        if (welcomeMessage) welcomeMessage.textContent = `Bienvenido, ${currentUser.user_metadata?.first_name || currentUser.email}`;
-        if (userAvatar) userAvatar.textContent = (currentUser.user_metadata?.first_name || currentUser.email).charAt(0).toUpperCase();
+        if (welcomeMessage) {
+            let nombre = currentUser.first_name || '';
+            let apellido = currentUser.last_name || '';
+            let nombreCompleto = (nombre + ' ' + apellido).trim();
+            welcomeMessage.textContent = `Bienvenido/a, ${nombreCompleto || currentUser.email}`;
+        }
+        if (userAvatar) renderAvatar(currentUser);
         
         // Configurar controles de fecha
         populateYearSelector();
