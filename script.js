@@ -1100,6 +1100,140 @@ async function fetchWithAuth(url, options = {}) {
     }
 }
 
+// === LÓGICA ANUAL ===
+
+// Obtiene los gastos y presupuestos por mes para el año seleccionado
+async function getAnnualData(selectedYear) {
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No hay sesión activa');
+        const userId = session.user.id;
+        // 1. Obtener presupuestos del año
+        const { data: budgets, error: errorBudgets } = await supabase
+            .from('budgets')
+            .select('month_id, amount')
+            .eq('user_id', userId)
+            .gte('month_id', `${selectedYear}-01`)
+            .lte('month_id', `${selectedYear}-12`);
+        if (errorBudgets) throw errorBudgets;
+        // 2. Obtener transacciones del año
+        const { data: transactions, error: errorTx } = await supabase
+            .from('transactions')
+            .select('amount, type, month_id')
+            .eq('user_id', userId)
+            .gte('month_id', `${selectedYear}-01`)
+            .lte('month_id', `${selectedYear}-12`);
+        if (errorTx) throw errorTx;
+        // 3. Procesar datos por mes
+        const gastosPorMes = Array(12).fill(0);
+        const presupuestosPorMes = Array(12).fill(0);
+        budgets.forEach(b => {
+            const mes = parseInt(b.month_id.split('-')[1], 10) - 1;
+            presupuestosPorMes[mes] = b.amount;
+        });
+        transactions.forEach(t => {
+            if (t.type === 'expense') {
+                const mes = parseInt(t.month_id.split('-')[1], 10) - 1;
+                gastosPorMes[mes] += t.amount;
+            }
+        });
+        return { gastosPorMes, presupuestosPorMes };
+    } catch (error) {
+        console.error('Error al obtener datos anuales:', error);
+        return { gastosPorMes: Array(12).fill(0), presupuestosPorMes: Array(12).fill(0) };
+    }
+}
+
+// Renderiza el gráfico anual en el canvas 'annual-chart'
+let annualChartInstance = null;
+function renderAnnualChart({ gastosPorMes, presupuestosPorMes }, selectedYear) {
+    const ctx = document.getElementById('annual-chart');
+    if (!ctx) return;
+    // Destruir instancia previa si existe
+    if (annualChartInstance) {
+        annualChartInstance.destroy();
+    }
+    const meses = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    annualChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: meses,
+            datasets: [
+                {
+                    label: 'Gastos',
+                    data: gastosPorMes,
+                    backgroundColor: 'rgba(239,68,68,0.7)',
+                    borderRadius: 6,
+                    maxBarThickness: 32
+                },
+                {
+                    label: 'Presupuesto',
+                    data: presupuestosPorMes,
+                    type: 'line',
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37,99,235,0.1)',
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#2563eb',
+                    fill: false,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                title: {
+                    display: true,
+                    text: `Gastos vs. Presupuesto - ${selectedYear}`
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString('es-CL');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Lógica para refrescar el gráfico anual al cambiar de año o mostrar la vista
+async function refreshAnnualChartUI() {
+    const yearSelector = document.getElementById('year-selector');
+    const selectedYear = yearSelector ? yearSelector.value : (new Date()).getFullYear();
+    const data = await getAnnualData(selectedYear);
+    renderAnnualChart(data, selectedYear);
+}
+
+// --- Integración con la UI ---
+// Al cambiar a la vista anual, refrescar el gráfico
+const navAnnual = document.getElementById('nav-annual');
+if (navAnnual) {
+    navAnnual.addEventListener('click', () => {
+        refreshAnnualChartUI();
+    });
+}
+// Al cambiar el año, refrescar el gráfico si la vista anual está visible
+const yearSelector = document.getElementById('year-selector');
+if (yearSelector) {
+    yearSelector.addEventListener('change', () => {
+        const annualView = document.getElementById('annual-dashboard-view');
+        if (annualView && !annualView.classList.contains('hidden')) {
+            refreshAnnualChartUI();
+        }
+    });
+}
+
 // Inicializar la aplicación cuando se carga la página
 if (document.getElementById('app-container')) {
     initializeApp();
