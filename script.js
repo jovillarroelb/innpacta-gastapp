@@ -960,30 +960,22 @@ async function addTransaction(transactionData) {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No hay sesión activa');
-        
-        const monthId = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-        
-        const { data, error } = await supabase
-            .from('transactions')
-            .insert([{
-                user_id: session.user.id,
-                description: transactionData.description,
-                amount: transactionData.amount,
-                type: transactionData.type,
-                category_id: transactionData.categoryId,
-                month_id: monthId,
-                date: transactionData.date,
-                comments: transactionData.comments || ''
-            }])
-            .select();
-            
-        if (error) throw error;
-        
+        const response = await fetch('/api/transactions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(transactionData)
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw errorData;
+        }
         showNotification('Transacción agregada exitosamente', 'success');
         await refreshTransactionsUI();
         await refreshChartsUI();
-        
-        return data[0];
+        return await response.json();
     } catch (error) {
         console.error('Error al agregar transacción:', error);
         showNotification('Error al agregar transacción', 'error');
