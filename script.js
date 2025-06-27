@@ -463,7 +463,11 @@ async function getCurrentUser() {
         if (payload.first_name && payload.last_name) {
             return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name };
         }
-        // Si no, consulta a la API
+        // Si el rol viene en el JWT y no es admin, no intentes fetch a /api/admin/users
+        if (payload.role && payload.role !== 'admin') {
+            return { id: payload.sub, email: payload.email };
+        }
+        // Si no hay rol o es admin, consulta a la API
         const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
             const users = await response.json();
@@ -1697,13 +1701,15 @@ if (avatar) {
         if (!token) return;
         const payload = JSON.parse(atob(token.split('.')[1]));
         document.getElementById('profile-email').value = payload.email || '';
-        // Obtener datos completos del usuario
-        const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
         let user = null;
-        if (response.ok) {
-            const users = await response.json();
-            if (Array.isArray(users)) {
-                user = users.find(u => u.email === payload.email);
+        // Solo buscar en /api/admin/users si el rol es admin
+        if (payload.role === 'admin') {
+            const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.ok) {
+                const users = await response.json();
+                if (Array.isArray(users)) {
+                    user = users.find(u => u.email === payload.email);
+                }
             }
         }
         document.getElementById('profile-firstname').value = user?.first_name || '';
