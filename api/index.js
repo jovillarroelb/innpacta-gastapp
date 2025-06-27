@@ -107,10 +107,10 @@ app.post('/auth/register', async (req, res) => {
             }
             // Hashea la contraseña
             const hashedPassword = await bcrypt.hash(password, 10);
-            // Crea el usuario
+            // Crea el usuario con rol 'user' por defecto
             const userResult = await client.query(
-                'INSERT INTO users (first_name, last_name, email, password) VALUES ($1, $2, $3, $4) RETURNING id',
-                [firstName, lastName, email, hashedPassword]
+                'INSERT INTO users (first_name, last_name, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+                [firstName, lastName, email, hashedPassword, 'user']
             );
             const userId = userResult.rows[0].id;
             // Poblar categorías por defecto
