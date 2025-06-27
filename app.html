@@ -11,6 +11,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body class="bg-gray-50 text-gray-800">
 
@@ -19,18 +20,18 @@
             <div id="user-avatar" class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md cursor-pointer select-none"></div>
             
             <nav id="sidebar-nav" class="flex flex-col items-center space-y-2">
-                <a href="#" id="nav-monthly" class="p-3 text-gray-500 rounded-lg sidebar-icon" title="Dashboard Mensual">
-                    <img src="ico/mes.svg" data-hover="ico/mes_hover.svg" alt="Mensual" class="sidebar-img" width="32" height="32" />
+                <a href="#" id="nav-monthly" class="p-3 rounded-lg sidebar-icon" title="Dashboard Mensual">
+                    <i class="bi bi-calendar2-week text-2xl"></i>
                 </a>
-                <a href="#" id="nav-annual" class="p-3 text-gray-500 rounded-lg sidebar-icon" title="Resumen Anual">
-                    <img src="ico/anual.svg" data-hover="ico/anual_hover.svg" alt="Anual" class="sidebar-img" width="32" height="32" />
+                <a href="#" id="nav-annual" class="p-3 rounded-lg sidebar-icon" title="Resumen Anual">
+                    <i class="bi bi-bar-chart-line text-2xl"></i>
                 </a>
-                <a href="#" id="manage-categories-btn" class="p-3 text-gray-500 rounded-lg sidebar-icon" title="Gestionar Categorías">
-                    <img src="ico/categoria.svg" data-hover="ico/categoria_hover.svg" alt="Categoría" class="sidebar-img" width="32" height="32" />
+                <a href="#" id="manage-categories-btn" class="p-3 rounded-lg sidebar-icon" title="Gestionar Categorías">
+                    <i class="bi bi-tags text-2xl"></i>
                 </a>
                 <li id="admin-menu-item" style="display: none;">
-                    <a href="admin.html" title="Administración de usuarios" class="sidebar-icon">
-                        <img src="ico/config.svg" data-hover="ico/config_hover.svg" alt="Admin" class="sidebar-img" width="32" height="32" />
+                    <a href="admin.html" title="Administración de usuarios" class="sidebar-icon p-3 rounded-lg">
+                        <i class="bi bi-gear text-2xl"></i>
                     </a>
                 </li>
             </nav>
@@ -249,6 +250,21 @@
         img.addEventListener('mouseenter', () => { img.src = hover; });
         img.addEventListener('mouseleave', () => { img.src = normal; });
     });
+    </script>
+    <script>
+    function setActiveSidebar(id) {
+        document.querySelectorAll('.sidebar-icon').forEach(el => {
+            el.classList.remove('bg-purple-600', 'text-white', 'active');
+            el.querySelector('i').classList.remove('text-white');
+        });
+        const active = document.getElementById(id);
+        if (active) {
+            active.classList.add('bg-purple-600', 'active');
+            active.querySelector('i').classList.add('text-white');
+        }
+    }
+    // Ejemplo: setActiveSidebar('nav-monthly');
+    // Llama a esta función según el módulo seleccionado
     </script>
 </body>
 </html>
