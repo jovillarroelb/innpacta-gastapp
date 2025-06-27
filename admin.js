@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (backToAppBtn) {
         backToAppBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('isAdminAuthenticated');
             window.location.href = '/index.html';
         });
     }
