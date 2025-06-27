@@ -452,18 +452,20 @@ async function getCurrentUser() {
         if (payload.role && payload.role !== 'admin') {
             return { id: payload.sub, email: payload.email };
         }
-        // Si no hay rol o es admin, consulta a la API
-        const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) {
-            const users = await response.json();
-            if (Array.isArray(users)) {
-                const user = users.find(u => u.id === payload.sub || u.email === payload.email);
-                if (user) {
-                    return { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name };
+        // Si el rol es admin, intenta fetch a /api/admin/users
+        if (payload.role === 'admin') {
+            const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.ok) {
+                const users = await response.json();
+                if (Array.isArray(users)) {
+                    const user = users.find(u => u.id == payload.sub);
+                    if (user) return user;
                 }
             }
+            // Si falla, retorna lo que haya en el JWT
+            return { id: payload.sub, email: payload.email };
         }
-        // Fallback solo con email
+        // Si no hay rol, retorna lo que haya en el JWT
         return { id: payload.sub, email: payload.email };
     } catch {
         return null;
