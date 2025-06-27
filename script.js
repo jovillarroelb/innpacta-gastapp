@@ -121,27 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (token) {
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            // Si el rol viene en el JWT, úsalo directamente
+            // Si el rol viene en el JWT y es admin, muestra el menú admin
             if (payload && payload.role === 'admin') {
                 document.getElementById('admin-menu-item').style.display = 'block';
-            } else if (payload && payload.sub) {
-                // Si no viene el rol, consulta a la API SOLO si el usuario es admin
-                fetch('/api/admin/users', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-                .then(res => {
-                    if (!res.ok) return null;
-                    return res.json();
-                })
-                .then(users => {
-                    if (!Array.isArray(users)) return;
-                    const currentUser = users.find(u => u.id === payload.sub);
-                    if (currentUser && currentUser.role === 'admin') {
-                        document.getElementById('admin-menu-item').style.display = 'block';
-                    }
-                })
-                .catch(() => {});
+                // Solo aquí, si quieres, podrías hacer fetch a /api/admin/users
             }
+            // No hagas fetch a /api/admin/users si el rol no es admin
         } catch {}
     }
 
