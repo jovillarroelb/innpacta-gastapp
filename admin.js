@@ -11,17 +11,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('admin-container').style.display = 'block';
     
-    const logoutBtn = document.getElementById('logout-btn');
+    // const logoutBtn = document.getElementById('logout-btn');
     const backToAppBtn = document.getElementById('back-to-app-btn');
     
-    logoutBtn.addEventListener('click', () => {
-        sessionStorage.removeItem('isAdminAuthenticated');
-        window.location.href = '/index.html';
-    });
+    // if (logoutBtn) {
+    //     logoutBtn.addEventListener('click', () => {
+    //         sessionStorage.removeItem('isAdminAuthenticated');
+    //         window.location.href = '/index.html';
+    //     });
+    // }
 
-    backToAppBtn.addEventListener('click', () => {
-        window.location.href = '/index.html';
-    });
+    if (backToAppBtn) {
+        backToAppBtn.addEventListener('click', () => {
+            window.location.href = '/index.html';
+        });
+    }
     
     fetchAllAdminData();
 });
