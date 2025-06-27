@@ -125,17 +125,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (payload && payload.role === 'admin') {
                 document.getElementById('admin-menu-item').style.display = 'block';
             } else if (payload && payload.sub) {
-                // Si no viene el rol, consulta a la API
+                // Si no viene el rol, consulta a la API SOLO si el usuario es admin
                 fetch('/api/admin/users', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) return null;
+                    return res.json();
+                })
                 .then(users => {
+                    if (!Array.isArray(users)) return;
                     const currentUser = users.find(u => u.id === payload.sub);
                     if (currentUser && currentUser.role === 'admin') {
                         document.getElementById('admin-menu-item').style.display = 'block';
                     }
-                });
+                })
+                .catch(() => {});
             }
         } catch {}
     }
