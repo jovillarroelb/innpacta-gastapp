@@ -446,26 +446,26 @@ async function getCurrentUser() {
         const payload = JSON.parse(atob(token.split('.')[1]));
         // Si el JWT trae nombre y apellido, úsalos
         if (payload.first_name && payload.last_name) {
-            return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name };
+            return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name, role: payload.role };
         }
         // Si el rol viene en el JWT y no es admin, no intentes fetch a /api/admin/users
         if (payload.role && payload.role !== 'admin') {
-            return { id: payload.sub, email: payload.email };
+            return { id: payload.sub, email: payload.email, role: payload.role };
         }
-        // Si el rol es admin, intenta fetch a /api/admin/users
-        if (payload.role === 'admin') {
-            const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.ok) {
-                const users = await response.json();
-                if (Array.isArray(users)) {
-                    const user = users.find(u => u.id == payload.sub);
-                    if (user) return user;
+        // Si no hay nombre/apellido, intenta consultar a la API (puede ser admin sin rol en JWT)
+        const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.ok) {
+            const users = await response.json();
+            if (Array.isArray(users)) {
+                const user = users.find(u => u.id == payload.sub || u.email === payload.email);
+                if (user) {
+                    // Si es admin, retorna todos los datos y marca como admin
+                    user.role = 'admin';
+                    return user;
                 }
             }
-            // Si falla, retorna lo que haya en el JWT
-            return { id: payload.sub, email: payload.email };
         }
-        // Si no hay rol, retorna lo que haya en el JWT
+        // Si no está en la lista de admins, retorna lo que haya en el JWT
         return { id: payload.sub, email: payload.email };
     } catch {
         return null;
@@ -1761,4 +1761,14 @@ if (logoutBtn) {
         window.location.reload();
     });
 }
+
+// Mostrar menú admin si el usuario es admin (por JWT o por BBDD)
+async function showAdminMenuIfNeeded() {
+    const user = await getCurrentUser();
+    if (user && user.role === 'admin') {
+        document.getElementById('admin-menu-item').style.display = 'block';
+    }
+}
+// Llama a esta función en la inicialización
+showAdminMenuIfNeeded();
 
