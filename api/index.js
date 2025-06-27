@@ -82,6 +82,15 @@ async function adminOnly(req, res, next) {
     }
 }
 
+// Endpoint para obtener la versión de la app
+app.get('/api/version', (req, res) => {
+    let version = '1.0.0';
+    try {
+        version = fs.readFileSync('VERSION.md', 'utf8').trim();
+    } catch {}
+    res.json({ version });
+});
+
 // --- AUTENTICACIÓN PERSONALIZADA JWT ---
 app.post('/auth/register', async (req, res) => {
     const { firstName, lastName, email, password } = req.body;
@@ -584,15 +593,6 @@ app.patch('/api/admin/users/:id', authMiddleware, async (req, res) => {
         console.error('Error al actualizar perfil:', error);
         res.status(500).json({ message: 'Error al actualizar perfil.' });
     }
-});
-
-// Endpoint para obtener la versión de la app
-app.get('/api/version', (req, res) => {
-    let version = '1.0.0';
-    try {
-        version = fs.readFileSync('VERSION.md', 'utf8').trim();
-    } catch {}
-    res.json({ version });
 });
 
 // Endpoint para obtener todos los datos para el admin (usuarios, transacciones, presupuestos, categorías)
