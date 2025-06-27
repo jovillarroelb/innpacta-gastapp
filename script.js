@@ -1683,22 +1683,9 @@ if (avatar) {
     avatar.addEventListener('click', async () => {
         const modal = document.getElementById('profile-modal');
         if (!modal) return;
-        // Poblar campos con datos actuales
-        const token = localStorage.getItem('jwt_token');
-        if (!token) return;
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        document.getElementById('profile-email').value = payload.email || '';
-        let user = null;
-        // Solo buscar en /api/admin/users si el rol es admin
-        if (payload.role === 'admin') {
-            const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.ok) {
-                const users = await response.json();
-                if (Array.isArray(users)) {
-                    user = users.find(u => u.email === payload.email);
-                }
-            }
-        }
+        // Poblar campos con datos actuales usando getCurrentUser
+        const user = await getCurrentUser();
+        document.getElementById('profile-email').value = user?.email || '';
         document.getElementById('profile-firstname').value = user?.first_name || '';
         document.getElementById('profile-lastname').value = user?.last_name || '';
         document.getElementById('profile-password').value = '';
