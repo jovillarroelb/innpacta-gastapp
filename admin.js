@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (backToAppBtn) {
         backToAppBtn.addEventListener('click', () => {
             sessionStorage.removeItem('isAdminAuthenticated');
-            window.location.href = '/index.html';
+            window.location.replace('/index.html');
         });
     }
     
@@ -70,8 +70,10 @@ const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
 async function fetchAllAdminData() {
     const loadingIndicator = document.getElementById('loading-indicator-admin');
     if (sessionStorage.getItem('isAdminAuthenticated') !== 'true') return;
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/all-data`, { headers: authHeaders });
+        const response = await fetch(`${API_BASE_URL}/admin/all-data`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (!response.ok) {
             throw new Error(`Error ${response.status} al cargar los datos del mantenedor.`);
         }
