@@ -19,15 +19,18 @@
             <div id="user-avatar" class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md cursor-pointer select-none"></div>
             
             <nav id="sidebar-nav" class="flex flex-col items-center space-y-2">
-                <a href="#" id="nav-monthly" class="p-3 text-gray-500 rounded-lg" title="Dashboard Mensual"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg></a>
-                <a href="#" id="nav-annual" class="p-3 text-gray-500 rounded-lg" title="Resumen Anual"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z" /></svg></a>
-                <a href="#" id="manage-categories-btn" class="p-3 text-gray-500 rounded-lg" title="Gestionar Categorías"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" /></svg></a>
+                <a href="#" id="nav-monthly" class="p-3 text-gray-500 rounded-lg sidebar-icon" title="Dashboard Mensual">
+                    <img src="ico/mes.png" data-hover="ico/mes_hover.png" alt="Mensual" class="sidebar-img" width="32" height="32" />
+                </a>
+                <a href="#" id="nav-annual" class="p-3 text-gray-500 rounded-lg sidebar-icon" title="Resumen Anual">
+                    <img src="ico/anual.png" data-hover="ico/anual_hover.png" alt="Anual" class="sidebar-img" width="32" height="32" />
+                </a>
+                <a href="#" id="manage-categories-btn" class="p-3 text-gray-500 rounded-lg sidebar-icon" title="Gestionar Categorías">
+                    <img src="ico/categoria.png" data-hover="ico/categoria_hover.png" alt="Categoría" class="sidebar-img" width="32" height="32" />
+                </a>
                 <li id="admin-menu-item" style="display: none;">
-                    <a href="admin.html" title="Administración de usuarios">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7">
-                            <circle cx="12" cy="12" r="3.5"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 9 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
+                    <a href="admin.html" title="Administración de usuarios" class="sidebar-icon">
+                        <img src="ico/config.png" data-hover="ico/config_hover.png" alt="Admin" class="sidebar-img" width="32" height="32" />
                     </a>
                 </li>
             </nav>
@@ -238,6 +241,14 @@
         }
     }
     // Llama a toggleMonthSelector(true) en la vista mensual y toggleMonthSelector(false) en la anual
+    </script>
+    <script>
+    document.querySelectorAll('.sidebar-img').forEach(img => {
+        const normal = img.getAttribute('src');
+        const hover = img.getAttribute('data-hover');
+        img.addEventListener('mouseenter', () => { img.src = hover; });
+        img.addEventListener('mouseleave', () => { img.src = normal; });
+    });
     </script>
 </body>
 </html>
