@@ -467,9 +467,11 @@ async function getCurrentUser() {
         const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) {
             const users = await response.json();
-            const user = users.find(u => u.id === payload.sub || u.email === payload.email);
-            if (user) {
-                return { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name };
+            if (Array.isArray(users)) {
+                const user = users.find(u => u.id === payload.sub || u.email === payload.email);
+                if (user) {
+                    return { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name };
+                }
             }
         }
         // Fallback solo con email
@@ -1697,8 +1699,13 @@ if (avatar) {
         document.getElementById('profile-email').value = payload.email || '';
         // Obtener datos completos del usuario
         const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
-        const users = await response.json();
-        const user = users.find(u => u.email === payload.email);
+        let user = null;
+        if (response.ok) {
+            const users = await response.json();
+            if (Array.isArray(users)) {
+                user = users.find(u => u.email === payload.email);
+            }
+        }
         document.getElementById('profile-firstname').value = user?.first_name || '';
         document.getElementById('profile-lastname').value = user?.last_name || '';
         document.getElementById('profile-password').value = '';
