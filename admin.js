@@ -69,6 +69,7 @@ const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
 
 async function fetchAllAdminData() {
     const loadingIndicator = document.getElementById('loading-indicator-admin');
+    if (sessionStorage.getItem('isAdminAuthenticated') !== 'true') return;
     try {
         const response = await fetch(`${API_BASE_URL}/admin/all-data`, { headers: authHeaders });
         if (!response.ok) {
