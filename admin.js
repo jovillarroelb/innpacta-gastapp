@@ -103,6 +103,7 @@ function renderUsersTable(users) {
         `;
         usersBody.appendChild(tr);
     });
+    setupUsersTableListener();
 }
 
 // Listener único para acciones de usuario
