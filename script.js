@@ -976,7 +976,7 @@ if (editTransactionForm) {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ description: desc, amount: amount, category_id: parseInt(catId, 10), comments, id: currentEditTransactionId, user_id: currentUser.id })
+                body: JSON.stringify({ description: desc, amount: amount, category_id: catId, comments, id: currentEditTransactionId, user_id: currentUser.id })
             });
             if (!response.ok) {
                 showNotification('Error al actualizar transacción', 'error');
@@ -1254,7 +1254,7 @@ function setupEventListeners() {
                 comments
             };
             if (type === 'expense') {
-                transactionData.category_id = parseInt(categoryId, 10);
+                transactionData.category_id = categoryId; // UUID como string
             } else {
                 transactionData.category_id = null;
             }
