@@ -834,32 +834,24 @@ function setupCategoryForm() {
 
 // Función para eliminar categoría por usuario
 async function deleteCategory(categoryId) {
-    if (!confirm('¿Estás seguro de eliminar esta categoría?')) return;
-    const token = localStorage.getItem('jwt_token');
-    try {
-        const response = await fetch('/api/categories', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ id: categoryId })
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            alert(error.message || 'Error al eliminar la categoría');
-            return;
+    showConfirmModal({
+        title: "Eliminar categoría",
+        message: "¿Seguro que deseas eliminar esta categoría? Esta acción no se puede deshacer.",
+        onConfirm: async () => {
+            try {
+                const token = localStorage.getItem('jwt_token');
+                const res = await fetch(`/api/categories/${categoryId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Error al eliminar categoría');
+                showNotification('Categoría eliminada', 'success');
+                await refreshCategoriesUI();
+            } catch (err) {
+                showNotification('No se pudo eliminar la categoría', 'error');
+            }
         }
-        // Refresca la lista de categorías en el modal y la UI principal
-        if (typeof loadCategoriesList === 'function') {
-            await loadCategoriesList();
-        }
-        if (typeof refreshCategoriesUI === 'function') {
-            await refreshCategoriesUI();
-        }
-    } catch (error) {
-        alert('Error al eliminar la categoría');
-    }
+    });
 }
 
 // --- MODAL DE EDICIÓN DE TRANSACCIÓN ---
@@ -1758,4 +1750,32 @@ async function showAdminMenuIfNeeded() {
 }
 // Llama a esta función en la inicialización
 showAdminMenuIfNeeded();
+
+function showConfirmModal({ title = "¿Estás seguro?", message = "", onConfirm }) {
+    const modal = document.getElementById('confirm-modal');
+    document.getElementById('confirm-modal-title').textContent = title;
+    document.getElementById('confirm-modal-message').textContent = message;
+    modal.classList.remove('hidden');
+
+    const acceptBtn = document.getElementById('confirm-modal-accept');
+    const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+    const cleanup = () => {
+        modal.classList.add('hidden');
+        acceptBtn.removeEventListener('click', onAccept);
+        cancelBtn.removeEventListener('click', onCancel);
+    };
+
+    function onAccept() {
+        cleanup();
+        if (typeof onConfirm === 'function') onConfirm();
+    }
+    function onCancel() {
+        cleanup();
+    }
+
+    acceptBtn.addEventListener('click', onAccept);
+    cancelBtn.addEventListener('click', onCancel);
+}
+window.showConfirmModal = showConfirmModal;
 
