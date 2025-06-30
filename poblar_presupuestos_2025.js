@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Pool } = require('pg');
+const { encrypt } = require('./utils/crypto');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -18,7 +19,7 @@ async function poblarPresupuestos() {
         `INSERT INTO budgets (user_id, month_id, amount)
          VALUES ($1, $2, $3)
          ON CONFLICT (user_id, month_id) DO UPDATE SET amount = EXCLUDED.amount`,
-        [userId, monthId, monto]
+        [userId, monthId, encrypt(String(monto))]
       );
       monto += 100000;
     }

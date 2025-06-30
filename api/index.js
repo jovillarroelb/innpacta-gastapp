@@ -7,9 +7,10 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const fs = require('fs');
+const { encrypt, decrypt } = require('../utils/crypto');
 
 // Validación de variables de entorno críticas
-const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'SUPABASE_JWT_SECRET'];
+const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'ENCRYPTION_KEY'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingVars.length > 0) {
@@ -43,7 +44,6 @@ app.use((req, res, next) => {
 // Middleware de Autenticación usando jsonwebtoken con mejor manejo de errores
 const authMiddleware = (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
-    console.log('Token recibido:', token);
     if (!token) {
         return res.status(401).json({ 
             message: 'No se proporcionó token de autenticación.',
@@ -51,15 +51,13 @@ const authMiddleware = (req, res, next) => {
         });
     }
     try {
-        // Verifica el JWT con la clave secreta, sin validar issuer
-        const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET, { 
+        // Verifica el JWT con la clave secreta
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { 
             algorithms: ['HS256']
         });
-        console.log('Usuario decodificado:', decoded);
         req.user = { id: decoded.sub };
         next();
     } catch (err) {
-        console.error('Error de autenticación:', err.message);
         return res.status(401).json({ 
             message: 'Token inválido o expirado.',
             code: 'INVALID_TOKEN',
@@ -138,7 +136,7 @@ app.post('/auth/register', async (req, res) => {
             // Generar JWT
             const token = jwt.sign(
                 { sub: userId, email },
-                process.env.SUPABASE_JWT_SECRET,
+                process.env.JWT_SECRET,
                 { expiresIn: '7d' }
             );
             res.status(201).json({ token });
@@ -171,7 +169,7 @@ app.post('/auth/login', async (req, res) => {
             // Generar JWT
             const token = jwt.sign(
                 { sub: user.id, email },
-                process.env.SUPABASE_JWT_SECRET,
+                process.env.JWT_SECRET,
                 { expiresIn: '7d' }
             );
             res.status(200).json({ token });
@@ -208,20 +206,11 @@ app.get('/api/data/:monthId', async (req, res) => {
     
     try {
         // Obtener presupuesto
-        const { data: budgetRows, error: budgetError } = await supabase
-            .from('budgets')
-            .select('amount')
-            .eq('user_id', userId)
-            .eq('month', monthId);
+        const { data: budgetRows, error: budgetError } = await pool.query('SELECT amount FROM budgets WHERE user_id = $1 AND month = $2', [userId, monthId]);
         if (budgetError) throw budgetError;
         
         // Obtener transacciones (con nombre de categoría)
-        const { data: transactions, error: txError } = await supabase
-            .from('transactions')
-            .select('*, categories(name)')
-            .eq('user_id', userId)
-            .eq('month', monthId)
-            .order('date', { ascending: false });
+        const { data: transactions, error: txError } = await pool.query('SELECT * FROM transactions WHERE user_id = $1 AND month = $2 ORDER BY date DESC', [userId, monthId]);
         if (txError) throw txError;
         
         res.status(200).json({
@@ -254,10 +243,15 @@ app.post('/api/transactions', async (req, res) => {
         const result = await client.query(
             `INSERT INTO transactions (user_id, description, amount, type, category_id, date, month, comments)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [userId, description, parseFloat(amount), type, category_id || null, date, month, comments]
+            [userId, encrypt(description), encrypt(String(amount)), type, category_id || null, date, month, encrypt(comments || '')]
         );
         client.release();
-        res.status(201).json(result.rows[0]);
+        // Descifrar antes de responder
+        const tx = result.rows[0];
+        tx.description = decrypt(tx.description);
+        tx.amount = decrypt(tx.amount);
+        tx.comments = tx.comments ? decrypt(tx.comments) : '';
+        res.status(201).json(tx);
     } catch (error) {
         console.error('Error al crear transacción:', error);
         res.status(500).json({ message: 'Error al crear la transacción', code: 'TRANSACTION_CREATION_ERROR' });
@@ -284,15 +278,10 @@ app.post('/api/budget', async (req, res) => {
     
     try {
         // UPSERT presupuesto
-        const { error } = await supabase
-            .from('budgets')
-            .upsert([{ 
-                user_id: userId, 
-                month: monthId, 
-                amount: parseFloat(amount) 
-            }], { 
-                onConflict: ['user_id', 'month'] 
-            });
+        const { error } = await pool.query(
+            'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3) ON CONFLICT (user_id, month) DO UPDATE SET amount = EXCLUDED.amount',
+            [userId, encrypt(String(amount)), monthId]
+        );
         if (error) throw error;
         res.status(200).json({ message: "Presupuesto guardado exitosamente" });
     } catch (error) {
@@ -317,12 +306,10 @@ app.patch('/api/transactions/:id/details', async (req, res) => {
     }
     
     try {
-        const { data, error } = await supabase
-            .from('transactions')
-            .update({ description, comments })
-            .eq('_id', id)
-            .eq('user_id', userId)
-            .select();
+        const { data, error } = await pool.query(
+            'UPDATE transactions SET description = $1, comments = $2 WHERE id = $3 AND user_id = $4 RETURNING *',
+            [encrypt(description), encrypt(comments), id, userId]
+        );
         if (error) throw error;
         if (!data || data.length === 0) {
             return res.status(404).json({ 
@@ -409,7 +396,12 @@ app.get('/api/budgets', async (req, res) => {
         const client = await pool.connect();
         const result = await client.query('SELECT * FROM budgets WHERE user_id = $1 ORDER BY month', [userId]);
         client.release();
-        res.status(200).json(result.rows);
+        // Descifrar el campo amount
+        const budgets = result.rows.map(b => ({
+            ...b,
+            amount: decrypt(b.amount)
+        }));
+        res.status(200).json(budgets);
     } catch (error) {
         console.error('Error en GET /api/budgets', error);
         res.status(500).json({ message: 'Error al obtener presupuestos', code: 'BUDGETS_FETCH_ERROR' });
@@ -425,7 +417,7 @@ app.put('/api/budgets', async (req, res) => {
         for (const b of budgets) {
             await client.query(
                 'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3) ON CONFLICT (user_id, month) DO UPDATE SET amount = EXCLUDED.amount',
-                [userId, b.amount, b.month]
+                [userId, encrypt(String(b.amount)), b.month]
             );
         }
         client.release();
@@ -441,12 +433,16 @@ app.get('/api/transactions', async (req, res) => {
     const userId = req.user.id;
     try {
         const client = await pool.connect();
-        const result = await client.query(
-            `SELECT t.*, c.name as category_name FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE t.user_id = $1 ORDER BY t.date DESC`,
-            [userId]
-        );
+        const result = await client.query('SELECT * FROM transactions WHERE user_id = $1 ORDER BY date DESC', [userId]);
         client.release();
-        res.status(200).json(result.rows);
+        // Descifrar los campos sensibles
+        const transactions = result.rows.map(tx => ({
+            ...tx,
+            description: decrypt(tx.description),
+            amount: decrypt(tx.amount),
+            comments: tx.comments ? decrypt(tx.comments) : ''
+        }));
+        res.status(200).json(transactions);
     } catch (error) {
         console.error('Error en GET /api/transactions', error);
         res.status(500).json({ message: 'Error al obtener transacciones', code: 'TRANSACTIONS_FETCH_ERROR' });
@@ -464,13 +460,18 @@ app.put('/api/transactions', async (req, res) => {
         const client = await pool.connect();
         const result = await client.query(
             `UPDATE transactions SET description = $1, amount = $2, category_id = $3, comments = $4 WHERE id = $5 AND user_id = $6 RETURNING *`,
-            [description, amount, category_id || null, comments, id, userId]
+            [encrypt(description), encrypt(String(amount)), category_id || null, encrypt(comments || ''), id, userId]
         );
         client.release();
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Transacción no encontrada', code: 'TRANSACTION_NOT_FOUND' });
         }
-        res.status(200).json(result.rows[0]);
+        // Descifrar antes de responder
+        const tx = result.rows[0];
+        tx.description = decrypt(tx.description);
+        tx.amount = decrypt(tx.amount);
+        tx.comments = tx.comments ? decrypt(tx.comments) : '';
+        res.status(200).json(tx);
     } catch (error) {
         console.error('Error en PUT /api/transactions', error);
         res.status(500).json({ message: 'Error al actualizar la transacción', code: 'TRANSACTION_UPDATE_ERROR' });

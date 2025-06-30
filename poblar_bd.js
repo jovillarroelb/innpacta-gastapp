@@ -2,6 +2,7 @@
 
 require('dotenv').config();
 const { Pool } = require('pg');
+const { encrypt } = require('./utils/crypto');
 
 // Crear un pool de conexiones usando la URL de la base de datos del archivo .env
 const pool = new Pool({
@@ -41,7 +42,7 @@ async function poblarBaseDeDatos() {
     console.log(`Insertando presupuesto de $500.000 para el mes ${mesIdActual}...`);
     await client.query(
       'INSERT INTO budgets (user_id, month_id, amount) VALUES ($1, $2, $3)',
-      [userId, mesIdActual, 500000]
+      [userId, mesIdActual, encrypt('500000')]
     );
     console.log("Presupuesto insertado.");
 
@@ -49,19 +50,19 @@ async function poblarBaseDeDatos() {
     console.log("Insertando transacciones de prueba...");
     const transaccionesQuery = `
       INSERT INTO transactions (user_id, user_id_legacy, month_id, description, amount, type, category_id, date) VALUES
-      ($1, $2, $3, 'Supermercado Lider', 45000, 'expense', $4, NOW()),
-      ($1, $2, $3, 'Pago de arriendo', 350000, 'expense', $5, NOW() - interval '1 day'),
-      ($1, $2, $3, 'Sueldo mensual', 900000, 'income', $6, NOW() - interval '2 day'),
-      ($1, $2, $3, 'Cena con amigos', 25000, 'expense', $7, NOW() - interval '3 day');
+      ($1, $2, $3, $4, $5, $6, $7, NOW()),
+      ($1, $2, $3, $8, $9, $10, $11, NOW() - interval '1 day'),
+      ($1, $2, $3, $12, $13, $14, $15, NOW() - interval '2 day'),
+      ($1, $2, $3, $16, $17, $18, $19, NOW() - interval '3 day');
     `;
     await client.query(transaccionesQuery, [
       userId,
       userId,
       mesIdActual,
-      categoriasMap.get('Alimentación'),
-      categoriasMap.get('Vivienda'),
-      categoriasMap.get('Sueldo'),
-      categoriasMap.get('Ocio'),
+      encrypt('Supermercado Lider'), encrypt('45000'), 'expense', categoriasMap.get('Alimentación'),
+      encrypt('Pago de arriendo'), encrypt('350000'), 'expense', categoriasMap.get('Vivienda'),
+      encrypt('Sueldo mensual'), encrypt('900000'), 'income', categoriasMap.get('Sueldo'),
+      encrypt('Cena con amigos'), encrypt('25000'), 'expense', categoriasMap.get('Ocio'),
     ]);
     console.log("Transacciones insertadas.");
 

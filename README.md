@@ -1,288 +1,124 @@
-# 🚀 Dashboard Financiero - Control de Gastos e Ingresos
+# 💸 GastApp - Dashboard Financiero Multiusuario
 
-Una aplicación web moderna y completa para el control financiero personal, construida con **Node.js**, **Express**, **Supabase** y **Chart.js**.
-
-## 🚀 Versión Actual: 1.0.0
-
-**Estado:** Estable - Listo para producción  
-**Última actualización:** 23 de Diciembre, 2024
+Gestión y control de gastos e ingresos personales y familiares, con enfoque en privacidad y seguridad de los datos.
 
 ---
 
-## ✨ Características Principales
-
-### 🔐 **Autenticación Segura**
-- Registro e inicio de sesión con Supabase Auth
-- Validación de email y contraseñas
-- Sesiones persistentes y seguras
-- Protección de rutas con JWT
-
-### 💰 **Gestión Financiera**
-- **Transacciones**: Agregar, editar y eliminar gastos e ingresos
-- **Categorías**: Sistema personalizable de categorías por usuario
-- **Presupuestos**: Definir y monitorear presupuestos mensuales
-- **Filtros**: Búsqueda y filtrado por fecha, categoría y tipo
-
-### 📊 **Visualización de Datos**
-- **Gráficos interactivos**: Gastos vs Ingresos, distribución por categorías
-- **Vistas temporales**: Mensual y anual
-- **Métricas en tiempo real**: Balance, totales y promedios
-- **Responsive**: Optimizado para móviles y desktop
-
-### 🎨 **Experiencia de Usuario**
-- **UI Moderna**: Diseño limpio con paleta azul/violeta
-- **Notificaciones**: Feedback visual para todas las acciones
-- **Loading States**: Indicadores de carga para mejor UX
-- **Validaciones**: Formularios con validación en tiempo real
-
-### 🔧 **Funcionalidades Técnicas**
-- **API RESTful**: Endpoints seguros y documentados
-- **Base de datos**: Supabase PostgreSQL con RLS
-- **Multiusuario**: Cada usuario tiene sus propios datos
-- **CORS configurado**: Seguridad para producción
+## 🚀 ¿Qué es GastApp?
+GastApp es una aplicación web moderna para el control financiero, donde cada usuario puede registrar, analizar y gestionar sus gastos e ingresos mensuales y anuales. La información se almacena cifrada en la base de datos para máxima confidencialidad.
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## 🏗️ Arquitectura y Seguridad
 
-- **Backend**: Node.js, Express.js
-- **Base de Datos**: Supabase (PostgreSQL)
-- **Autenticación**: Supabase Auth + JWT
-- **Frontend**: HTML5, CSS3, JavaScript ES6+
-- **Gráficos**: Chart.js
-- **Estilos**: Tailwind CSS
-- **Despliegue**: Heroku, Vercel
+- **Base de datos:** PostgreSQL alojada en Supabase (solo como hosting, no se usa Supabase Auth).
+- **Backend:** Node.js + Express. Acceso a la base de datos mediante el driver nativo `pg`.
+- **Autenticación:** Personalizada, con tabla propia de usuarios y JWT.
+- **Cifrado:** Todos los datos sensibles (monto, descripción, comentarios, etc.) se cifran antes de almacenarse en la base de datos.
+- **Frontend:** HTML, CSS, JavaScript (sin frameworks pesados).
 
 ---
 
-## 📦 Instalación y Configuración
+## ✨ Funcionalidades principales
 
-### Prerrequisitos
-- Node.js >= 18.0.0
-- npm o yarn
-- Cuenta en Supabase
+- Registro e inicio de sesión seguro (autenticación propia, no Supabase Auth)
+- Gestión de transacciones (gastos/ingresos) y presupuestos mensuales
+- Visualización de métricas y gráficos
+- Multiusuario: cada usuario solo accede a sus propios datos
+- Cifrado de datos sensibles en la base de datos
+- Responsive y fácil de usar
 
-### 1. Clonar el Repositorio
+---
+
+## ⚙️ Instalación y configuración
+
+### 1. Clona el repositorio
 ```bash
 git clone https://github.com/tu-usuario/innpacta-gastapp.git
 cd innpacta-gastapp
 ```
 
-### 2. Instalar Dependencias
+### 2. Instala las dependencias
 ```bash
 npm install
 ```
 
-### 3. Configurar Variables de Entorno
-Crear archivo `.env` en la raíz del proyecto:
-
+### 3. Configura las variables de entorno
+Crea un archivo `.env` en la raíz del proyecto:
 ```env
-# Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-key
-SUPABASE_SERVICE_KEY=your-service-key
-SUPABASE_JWT_SECRET=your-jwt-secret
+# Conexión a la base de datos de Supabase (PostgreSQL)
+DATABASE_URL=postgres://usuario:contraseña@host:puerto/basededatos
 
-# Server Configuration
+# Clave secreta para JWT (genera una segura)
+JWT_SECRET=tu_clave_secreta
+
+# Clave para cifrado de datos sensibles (hexadecimal de 64 caracteres)
+ENCRYPTION_KEY=tu_clave_hexadecimal_64
+
+# Puerto del servidor
 PORT=3000
 NODE_ENV=development
 ```
 
-### 4. Configurar Supabase
+### 4. Configura la base de datos
+- Crea tu proyecto en [Supabase](https://supabase.com) y obtén la URL de conexión a PostgreSQL.
+- Ejecuta los scripts SQL incluidos en el proyecto para crear las tablas necesarias (`users`, `transactions`, `budgets`, `categories`, etc.).
 
-#### Crear Proyecto en Supabase
-1. Ve a [supabase.com](https://supabase.com)
-2. Crea un nuevo proyecto
-3. Obtén las credenciales de la API
+### 5. Ejecuta la aplicación
+- **Desarrollo:**
+  ```bash
+  npm run dev
+  ```
+- **Producción:**
+  ```bash
+  npm start
+  ```
 
-#### Configurar Base de Datos
-Ejecuta los siguientes scripts SQL en el SQL Editor de Supabase:
-
-```sql
--- Tabla de perfiles
-CREATE TABLE profiles (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  first_name TEXT,
-  last_name TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Tabla de categorías
-CREATE TABLE categories (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(profile_id, name)
-);
-
--- Tabla de presupuestos
-CREATE TABLE budgets (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  month_id TEXT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, month_id)
-);
-
--- Tabla de transacciones
-CREATE TABLE transactions (
-  _id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-  date DATE NOT NULL,
-  month_id TEXT NOT NULL,
-  comments TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Tabla de usuarios personalizada para autenticación JWT
-CREATE TABLE users (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  password TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'user',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Trigger para poblar categorías por defecto
-CREATE OR REPLACE FUNCTION populate_default_categories()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO categories (name, profile_id) VALUES
-    ('Alimentación', NEW.id),
-    ('Transporte', NEW.id),
-    ('Entretenimiento', NEW.id),
-    ('Salud', NEW.id),
-    ('Educación', NEW.id),
-    ('Vivienda', NEW.id),
-    ('Servicios', NEW.id),
-    ('Otros', NEW.id);
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_populate_categories
-  AFTER INSERT ON profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION populate_default_categories();
-
--- RLS (Row Level Security)
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-
--- Políticas de seguridad
-CREATE POLICY "Users can view own profile" ON profiles
-  FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = id);
-
-CREATE POLICY "Users can view own categories" ON categories
-  FOR ALL USING (profile_id = auth.uid());
-
-CREATE POLICY "Users can view own budgets" ON budgets
-  FOR ALL USING (user_id = auth.uid());
-
-CREATE POLICY "Users can view own transactions" ON transactions
-  FOR ALL USING (user_id = auth.uid());
-```
-
-### 5. Ejecutar la Aplicación
-
-#### Desarrollo
-```bash
-npm run dev
-```
-
-#### Producción
-```bash
-npm start
-```
-
-La aplicación estará disponible en `http://localhost:3000`
+La app estará disponible en `http://localhost:3000`
 
 ---
 
-## 🚀 Despliegue
+## 🔒 Seguridad y privacidad
+- **Cifrado:** Todos los datos sensibles se cifran antes de guardarse en la base de datos. Si alguien accede a la BBDD, no podrá leer los datos sin la clave.
+- **Autenticación:** Solo usuarios autenticados pueden acceder a la API. El backend valida JWT en cada petición.
+- **Privacidad:** Cada usuario solo puede ver y modificar sus propios datos.
 
-### Heroku
-```bash
-# Crear app en Heroku
-heroku create tu-app-name
+---
 
-# Configurar variables de entorno
-heroku config:set SUPABASE_URL=your-supabase-url
-heroku config:set SUPABASE_KEY=your-supabase-key
-heroku config:set SUPABASE_SERVICE_KEY=your-service-key
-heroku config:set SUPABASE_JWT_SECRET=your-jwt-secret
-heroku config:set NODE_ENV=production
+## 🛠️ Estructura del proyecto
 
-# Desplegar
-git push heroku main
 ```
-
-### Vercel
-```bash
-# Instalar Vercel CLI
-npm i -g vercel
-
-# Desplegar
-vercel
+innpacta-gastapp/
+  ├── api/              # Lógica del backend (Express)
+  ├── utils/            # Utilidades (cifrado, helpers)
+  ├── poblar_bd.js      # Script para poblar la base de datos
+  ├── poblar_presupuestos_2025.js # Script para poblar presupuestos
+  ├── index.html        # Login/registro
+  ├── app.html          # Dashboard principal
+  ├── script.js         # Lógica frontend
+  ├── style.css         # Estilos
+  └── ...
 ```
 
 ---
 
-## 📱 Uso de la Aplicación
+## 📋 Endpoints principales
 
-### 1. **Registro/Login**
-- Accede a la aplicación
-- Regístrate con email y contraseña
-- O inicia sesión si ya tienes cuenta
-
-### 2. **Configurar Categorías**
-- Ve a "Administración" → "Categorías"
-- Agrega tus categorías personalizadas
-- Las categorías son específicas por usuario
-
-### 3. **Agregar Transacciones**
-- Usa el formulario principal
-- Selecciona tipo (Gasto/Ingreso)
-- Elige categoría y fecha
-- Agrega descripción y monto
-
-### 4. **Definir Presupuestos**
-- Ve a "Presupuestos"
-- Define el monto para el mes actual
-- Monitorea el progreso en tiempo real
-
-### 5. **Analizar Datos**
-- Revisa los gráficos de gastos vs ingresos
-- Cambia entre vista mensual y anual
-- Filtra por categorías y fechas
+- `POST /auth/register` — Registro de usuario
+- `POST /auth/login` — Login de usuario
+- `GET /api/transactions` — Listar transacciones del usuario
+- `POST /api/transactions` — Crear transacción
+- `PUT /api/transactions` — Editar transacción
+- `GET /api/budgets` — Listar presupuestos
+- `POST /api/budget` — Crear/actualizar presupuesto
+- ...
 
 ---
 
-## 🔧 API Endpoints
+## 🧑‍💻 Contribuir
+¡Pull requests y sugerencias son bienvenidas!
 
-### Autenticación
-- `POST /api/auth/login` - Iniciar sesión
-- `POST /api/auth/register` - Registrarse
-- `POST /api/auth/logout` - Cerrar sesión
+---
 
-### Transacciones
-- `GET /api/data/:monthId` - Obtener datos del mes
-- `POST /api/transactions` - Crear transacción
-- `PATCH /api/transactions/:id/details` - Actualizar transacción
+## 📝 Licencia
+MIT
