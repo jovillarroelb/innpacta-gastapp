@@ -433,14 +433,22 @@ app.get('/api/transactions', async (req, res) => {
     const userId = req.user.id;
     try {
         const client = await pool.connect();
-        const result = await client.query('SELECT * FROM transactions WHERE user_id = $1 ORDER BY date DESC', [userId]);
+        const result = await client.query(
+            `SELECT t.*, c.name AS category_name
+             FROM transactions t
+             LEFT JOIN categories c ON t.category_id = c.id
+             WHERE t.user_id = $1
+             ORDER BY t.date DESC`,
+            [userId]
+        );
         client.release();
         // Descifrar los campos sensibles
         const transactions = result.rows.map(tx => ({
             ...tx,
             description: decrypt(tx.description),
             amount: decrypt(tx.amount),
-            comments: tx.comments ? decrypt(tx.comments) : ''
+            comments: tx.comments ? decrypt(tx.comments) : '',
+            category_name: tx.category_name || 'Sin categoría'
         }));
         res.status(200).json(transactions);
     } catch (error) {
