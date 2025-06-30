@@ -1572,6 +1572,7 @@ if (document.getElementById('app-container')) {
 
 window.deleteTransaction = deleteTransaction;
 window.editTransaction = editTransaction;
+window.deleteCategory = deleteCategory;
 
 // Corregir cálculo de sumas por categoría para gráficos
 function calcularTotalesPorCategoria(transactions, tipo) {
