@@ -86,3 +86,31 @@ async function poblarBaseDeDatos() {
 
 // Ejecutar la función principal.
 poblarBaseDeDatos();
+
+// --- SCRIPT DE REPARACIÓN DE PRESUPUESTOS NO CIFRADOS ---
+if (require.main === module && process.argv.includes('--fix-budgets')) {
+  (async () => {
+    const { Pool } = require('pg');
+    const { encrypt } = require('./utils/crypto');
+    require('dotenv').config();
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const client = await pool.connect();
+    try {
+      const res = await client.query('SELECT id, amount FROM budgets');
+      let updated = 0;
+      for (const row of res.rows) {
+        // Si el valor no contiene ':' asumimos que no está cifrado
+        if (typeof row.amount === 'string' && row.amount.includes(':')) continue;
+        if (typeof row.amount === 'number' || !row.amount.includes(':')) {
+          const encrypted = encrypt(String(row.amount));
+          await client.query('UPDATE budgets SET amount = $1 WHERE id = $2', [encrypted, row.id]);
+          updated++;
+        }
+      }
+      console.log(`Presupuestos reparados: ${updated}`);
+    } finally {
+      client.release();
+      process.exit(0);
+    }
+  })();
+}

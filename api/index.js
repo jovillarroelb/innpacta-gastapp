@@ -130,7 +130,7 @@ app.post('/auth/register', async (req, res) => {
                 const month = `${year}-${String(m).padStart(2, '0')}`;
                 budgetInserts.push(client.query(
                     'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3) ON CONFLICT (user_id, month) DO NOTHING',
-                    [userId, 0, month]
+                    [userId, encrypt('0'), month]
                 ));
             }
             await Promise.all(budgetInserts);
