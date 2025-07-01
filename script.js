@@ -57,25 +57,34 @@ function isValidEmail(email) {
 async function initializeFooter() {
     const versionElements = document.querySelectorAll('#app-version');
     const yearElements = document.querySelectorAll('#current-year');
-    
-    // Obtener versión dinámicamente desde la API
     let appVersion = '1.0.0'; // Versión por defecto
+    let versionFetched = false;
+    // Intentar primero con autenticación
     try {
         const response = await fetchWithAuth('/api/version');
         if (response && response.ok) {
             const versionData = await response.json();
             appVersion = versionData.version;
+            versionFetched = true;
         }
     } catch (error) {
         // Silenciar error si no hay sesión activa
     }
-    
-    // Actualizar elementos de versión
+    // Si falla, intentar sin autenticación
+    if (!versionFetched) {
+        try {
+            const response = await fetch('/api/version');
+            if (response && response.ok) {
+                const versionData = await response.json();
+                appVersion = versionData.version;
+            }
+        } catch (error) {
+            // Silenciar error
+        }
+    }
     versionElements.forEach(element => {
         if (element) element.textContent = appVersion;
     });
-    
-    // Actualizar año actual
     const currentYear = new Date().getFullYear();
     yearElements.forEach(element => {
         if (element) element.textContent = currentYear;
