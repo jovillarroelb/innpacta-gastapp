@@ -1761,8 +1761,28 @@ if (profileForm) {
             if (!response.ok) throw new Error('Error al actualizar perfil');
             showNotification('Perfil actualizado', 'success');
             document.getElementById('profile-modal').classList.add('hidden');
-            // Refrescar avatar
+            // Refrescar avatar y saludo
             renderAvatar({ first_name: firstName, last_name: lastName });
+            const saludo = document.getElementById('user-greeting');
+            if (saludo) saludo.textContent = `Bienvenido/a, ${firstName}`;
+            // Actualizar JWT en localStorage si backend lo retorna
+            const result = await response.json();
+            if (result.token) {
+                localStorage.setItem('jwt_token', result.token);
+            } else {
+                // Si no retorna token, actualiza el payload localmente (solo para el saludo)
+                const oldToken = localStorage.getItem('jwt_token');
+                if (oldToken) {
+                    const parts = oldToken.split('.');
+                    if (parts.length === 3) {
+                        let payload = JSON.parse(atob(parts[1]));
+                        payload.first_name = firstName;
+                        payload.last_name = lastName;
+                        const newPayload = btoa(JSON.stringify(payload)).replace(/=+$/, '');
+                        localStorage.setItem('jwt_token', `${parts[0]}.${newPayload}.${parts[2]}`);
+                    }
+                }
+            }
         } catch (err) {
             showNotification('Error al actualizar perfil', 'error');
         }
