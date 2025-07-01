@@ -1370,7 +1370,7 @@ function setupEventListeners() {
             if (currentMonth === 11) {
                 currentMonth = 0;
                 currentYear++;
-    } else {
+            } else {
                 currentMonth++;
             }
             updateMonthDisplay();
@@ -1830,9 +1830,11 @@ async function showAdminMenuIfNeeded() {
     const user = await getCurrentUser();
     if (user && user.role === 'admin') {
         document.getElementById('admin-menu-item').style.display = 'block';
+    } else {
+        document.getElementById('admin-menu-item').style.display = 'none';
     }
 }
-// Llama a esta función en la inicialización
+// Llama a esta función en la inicialización y después de login
 showAdminMenuIfNeeded();
 
 function showConfirmModal({ title = "¿Estás seguro?", message = "", onConfirm }) {
