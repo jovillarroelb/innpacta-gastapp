@@ -601,7 +601,14 @@ app.patch('/api/profile', authMiddleware, async (req, res) => {
             values
         );
         client.release();
-        res.status(200).json(result.rows[0]);
+        // Generar nuevo JWT con los datos actualizados
+        const updatedUser = result.rows[0];
+        const token = jwt.sign(
+            { sub: updatedUser.id, email: updatedUser.email, first_name: updatedUser.first_name, last_name: updatedUser.last_name, role: updatedUser.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        res.status(200).json({ ...updatedUser, token });
     } catch (error) {
         console.error('Error al actualizar perfil (usuario normal):', error);
         res.status(500).json({ message: 'Error al actualizar perfil.' });
