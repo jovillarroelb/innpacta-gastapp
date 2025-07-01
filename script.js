@@ -1700,8 +1700,8 @@ function showAnnualView() {
 function renderAvatar(user) {
     const avatar = document.getElementById('user-avatar');
     if (!avatar) return;
-    const first = user.first_name ? user.first_name[0].toUpperCase() : '';
-    const last = user.last_name ? user.last_name[0].toUpperCase() : '';
+    const first = user.first_name ? user.first_name.normalize('NFC')[0].toUpperCase() : '';
+    const last = user.last_name ? user.last_name.normalize('NFC')[0].toUpperCase() : '';
     if (first || last) {
         avatar.textContent = first + last;
     } else if (user.email) {
@@ -1762,9 +1762,9 @@ if (profileForm) {
             showNotification('Perfil actualizado', 'success');
             document.getElementById('profile-modal').classList.add('hidden');
             // Refrescar avatar y saludo
-            renderAvatar({ first_name: firstName, last_name: lastName });
+            renderAvatar({ first_name: firstName.normalize('NFC'), last_name: lastName.normalize('NFC') });
             const saludo = document.getElementById('user-greeting');
-            if (saludo) saludo.textContent = `Bienvenido/a, ${firstName}`;
+            if (saludo) saludo.textContent = `Bienvenido/a, ${firstName.normalize('NFC')}`;
             // Actualizar JWT en localStorage si backend lo retorna
             const result = await response.json();
             if (result.token) {
@@ -1776,8 +1776,8 @@ if (profileForm) {
                     const parts = oldToken.split('.');
                     if (parts.length === 3) {
                         let payload = JSON.parse(atob(parts[1]));
-                        payload.first_name = firstName;
-                        payload.last_name = lastName;
+                        payload.first_name = firstName.normalize('NFC');
+                        payload.last_name = lastName.normalize('NFC');
                         const newPayload = btoa(JSON.stringify(payload)).replace(/=+$/, '');
                         localStorage.setItem('jwt_token', `${parts[0]}.${newPayload}.${parts[2]}`);
                     }
