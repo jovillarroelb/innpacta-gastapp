@@ -366,9 +366,9 @@ app.post('/api/categories', async (req, res) => {
 });
 
 // Eliminar categoría
-app.delete('/api/categories', async (req, res) => {
+app.delete('/api/categories/:id', async (req, res) => {
     const userId = req.user.id;
-    const { id } = req.body;
+    const { id } = req.params;
     if (!id) {
         return res.status(400).json({ message: 'ID de categoría requerido', code: 'MISSING_CATEGORY_ID' });
     }
@@ -384,7 +384,7 @@ app.delete('/api/categories', async (req, res) => {
         }
         res.status(200).json({ message: 'Categoría eliminada exitosamente' });
     } catch (error) {
-        console.error('Error en DELETE /api/categories', error);
+        console.error('Error en DELETE /api/categories/:id', error);
         res.status(500).json({ message: 'Error al eliminar la categoría', code: 'CATEGORY_DELETION_ERROR' });
     }
 });
