@@ -1239,10 +1239,8 @@ async function initializeApp() {
         if (mainTitle) mainTitle.textContent = 'Dashboard Financiero';
         if (welcomeMessage) {
             let nombre = currentUser.first_name || '';
-            let apellido = currentUser.last_name || '';
-            let nombreCompleto = (nombre + ' ' + apellido).trim();
-            if (nombreCompleto) {
-                welcomeMessage.textContent = `Bienvenido/a, ${nombreCompleto}`;
+            if (nombre) {
+                welcomeMessage.textContent = `Bienvenido/a, ${nombre}`;
             } else {
                 welcomeMessage.textContent = `Bienvenido/a, ${currentUser.email}`;
             }
