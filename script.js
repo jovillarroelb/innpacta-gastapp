@@ -199,6 +199,38 @@ async function handleAppPage() {
             }
         });
     });
+
+    // Formateo automático de monto en el input
+    const amountInput = document.getElementById('amount');
+    if (amountInput) {
+        amountInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/[^\d]/g, '');
+            if (!value) {
+                e.target.value = '';
+                return;
+            }
+            // Formatea con puntos de miles
+            value = parseInt(value, 10).toLocaleString('es-CL');
+            e.target.value = `$${value}`;
+        });
+        // Al hacer focus, selecciona solo el número
+        amountInput.addEventListener('focus', (e) => {
+            setTimeout(() => {
+                e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+            }, 0);
+        });
+    }
+    // Al enviar el formulario, limpia el monto para enviar solo el número
+    const expenseForm = document.getElementById('expense-form');
+    if (expenseForm) {
+        expenseForm.addEventListener('submit', (e) => {
+            const amountInput = document.getElementById('amount');
+            if (amountInput) {
+                let raw = amountInput.value.replace(/[^\d]/g, '');
+                amountInput.value = raw;
+            }
+        }, true);
+    }
 }
 
 // --- LÓGICA PARA LA PÁGINA DE LOGIN (index.html) ---
