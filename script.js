@@ -533,7 +533,7 @@ async function getBudgets() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const allBudgets = await response.json();
-        // Filtrar por mes y año seleccionados
+        console.log('Buscando presupuesto para:', monthId, 'Presupuestos disponibles:', allBudgets.map(b => b.month));
         return allBudgets.filter(b => b.month === monthId);
     } catch (error) {
         console.error('Error al obtener presupuestos:', error);
@@ -1132,6 +1132,7 @@ async function updateMonthlyTotals() {
     });
     // El presupuesto mensual es el mismo que el de la curva azul anual
     const monthlyBudget = budgets.length > 0 ? Number(budgets[0].amount) || 0 : 0;
+    console.log('Presupuesto mensual encontrado:', monthlyBudget, budgets);
     const balance = totalIncome - totalExpenses;
     // Actualizar DOM
     const elIncome = document.getElementById('total-income');
