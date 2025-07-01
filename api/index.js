@@ -98,6 +98,11 @@ app.post('/auth/register', async (req, res) => {
     if (!email || !password || !firstName || !lastName) {
         return res.status(400).json({ message: 'Faltan campos requeridos.' });
     }
+    // Validación de nombre y apellido: solo letras Unicode, espacios y guiones
+    const nameRegex = /^[\p{L} .'-]+$/u;
+    if (!nameRegex.test(firstName) || !nameRegex.test(lastName)) {
+        return res.status(400).json({ message: 'Nombre y apellido solo pueden contener letras, espacios, tildes y caracteres internacionales.' });
+    }
     try {
         const client = await pool.connect();
         try {
