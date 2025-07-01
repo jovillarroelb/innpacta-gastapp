@@ -107,7 +107,7 @@ app.post('/auth/register', async (req, res) => {
             const hashedPassword = await bcrypt.hash(password, 10);
             // Crea el usuario con rol 'user' por defecto
             const userResult = await client.query(
-                'INSERT INTO users (first_name, last_name, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, first_name, last_name',
+                'INSERT INTO users (first_name, last_name, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, first_name, last_name, role',
                 [firstName, lastName, email, hashedPassword, 'user']
             );
             const user = userResult.rows[0];
@@ -134,9 +134,9 @@ app.post('/auth/register', async (req, res) => {
                 ));
             }
             await Promise.all(budgetInserts);
-            // Generar JWT con nombre y apellido
+            // Generar JWT con nombre, apellido y rol
             const token = jwt.sign(
-                { sub: userId, email, first_name: user.first_name, last_name: user.last_name },
+                { sub: userId, email, first_name: user.first_name, last_name: user.last_name, role: user.role },
                 process.env.JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -158,7 +158,7 @@ app.post('/auth/login', async (req, res) => {
     try {
         const client = await pool.connect();
         try {
-            const userResult = await client.query('SELECT id, password, first_name, last_name FROM users WHERE email = $1', [email]);
+            const userResult = await client.query('SELECT id, password, first_name, last_name, role FROM users WHERE email = $1', [email]);
             if (userResult.rows.length === 0) {
                 return res.status(401).json({ message: 'Credenciales inválidas.' });
             }
@@ -167,9 +167,9 @@ app.post('/auth/login', async (req, res) => {
             if (!valid) {
                 return res.status(401).json({ message: 'Credenciales inválidas.' });
             }
-            // Generar JWT con nombre y apellido
+            // Generar JWT con nombre, apellido y rol
             const token = jwt.sign(
-                { sub: user.id, email, first_name: user.first_name, last_name: user.last_name },
+                { sub: user.id, email, first_name: user.first_name, last_name: user.last_name, role: user.role },
                 process.env.JWT_SECRET,
                 { expiresIn: '7d' }
             );
