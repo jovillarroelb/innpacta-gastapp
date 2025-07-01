@@ -1208,7 +1208,11 @@ async function initializeApp() {
             let nombre = currentUser.first_name || '';
             let apellido = currentUser.last_name || '';
             let nombreCompleto = (nombre + ' ' + apellido).trim();
-            welcomeMessage.textContent = `Bienvenido/a, ${nombreCompleto || currentUser.email}`;
+            if (nombreCompleto) {
+                welcomeMessage.textContent = `Bienvenido/a, ${nombreCompleto}`;
+            } else {
+                welcomeMessage.textContent = `Bienvenido/a, ${currentUser.email}`;
+            }
         }
         if (userAvatar) renderAvatar(currentUser);
         
@@ -1696,7 +1700,13 @@ function renderAvatar(user) {
     if (!avatar) return;
     const first = user.first_name ? user.first_name[0].toUpperCase() : '';
     const last = user.last_name ? user.last_name[0].toUpperCase() : '';
-    avatar.textContent = first + last;
+    if (first || last) {
+        avatar.textContent = first + last;
+    } else if (user.email) {
+        avatar.textContent = user.email[0].toUpperCase();
+    } else {
+        avatar.textContent = '';
+    }
 }
 
 // Abrir modal de perfil al hacer click en el avatar
