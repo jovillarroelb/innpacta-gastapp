@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (backToAppBtn) {
         backToAppBtn.addEventListener('click', () => {
             sessionStorage.removeItem('isAdminAuthenticated');
-            window.location.replace('/index.html');
+            window.location.replace('/app.html');
         });
     }
     
