@@ -1,8 +1,8 @@
 # Control de Versiones - App Control Financiero
 
-## Versión Actual: 1.0.0 🚀
+## Versión Actual: 1.0.1
 
-**Fecha de Release:** 23 de Diciembre, 2024  
+**Fecha de Release:** 2025-07-01  
 **Estado:** Estable - Listo para producción
 
 ---
@@ -106,4 +106,10 @@ git push origin v1.0.0
 **Tests:** ✅ Pasando  
 **Performance:** ✅ Optimizada  
 **Security:** ✅ Implementada  
-**Mobile:** ✅ Responsive 
+**Mobile:** ✅ Responsive
+
+- Normalización Unicode (NFC) en nombres y apellidos (backend y frontend)
+- Consistencia total en JWT tras editar perfil
+- Fix visual de saludo y avatar con tildes/caracteres internacionales
+- Ofuscación de JS en producción
+- Control de versiones centralizado 

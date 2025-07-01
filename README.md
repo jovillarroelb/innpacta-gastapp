@@ -2,6 +2,16 @@
 
 Gestión y control de gastos e ingresos personales y familiares, con enfoque en privacidad y seguridad de los datos.
 
+**Versión:** 1.0.1  
+**Año:** 2025
+
+## Cambios recientes (v1.0.1)
+- Nombres y apellidos ahora soportan tildes y caracteres internacionales (normalización Unicode en backend y frontend).
+- Consistencia total en JWT tras editar perfil (nombre/apellido siempre actualizados).
+- Fix visual: saludo y avatar muestran correctamente tildes y caracteres internacionales.
+- Ofuscación de JS en producción para mayor seguridad.
+- Control de versiones centralizado en VERSION.md y visible en el Footer.
+
 ---
 
 ## 🚀 ¿Qué es GastApp?
