@@ -9,7 +9,9 @@
     "version:patch": "npm version patch",
     "version:minor": "npm version minor",
     "version:major": "npm version major",
-    "changelog": "echo '## Changelog' > CHANGELOG.md && git log --oneline --since='1 week ago' >> CHANGELOG.md"
+    "changelog": "echo '## Changelog' > CHANGELOG.md && git log --oneline --since='1 week ago' >> CHANGELOG.md",
+    "obfuscate:frontend": "javascript-obfuscator script.js --output dist/script.js && javascript-obfuscator admin.js --output dist/admin.js",
+    "heroku-postbuild": "npm run obfuscate:frontend"
   },
   "keywords": [
     "finanzas",
@@ -27,7 +29,8 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.16.2",
-    "psql": "^0.0.1"
+    "psql": "^0.0.1",
+    "javascript-obfuscator": "^4.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
