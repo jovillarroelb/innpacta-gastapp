@@ -131,8 +131,8 @@ setupUsersTableListener = function() {
                 });
                 if (!res.ok) throw new Error('Error al resetear contraseña');
                 const { newPassword } = await res.json();
-                // Mostrar la nueva contraseña en pantalla (alert o modal simple)
-                alert('Nueva contraseña generada para el usuario:\n\n' + newPassword + '\n\nCópiala y compártela con el usuario.');
+                // Mostrar la nueva contraseña en modal custom
+                showPasswordModal(newPassword);
                 try { await navigator.clipboard.writeText(newPassword); } catch {}
                 showNotification('Contraseña reseteada y copiada al portapapeles', 'success');
             } catch (err) {
@@ -227,3 +227,36 @@ function showConfirmModal({ title = "¿Estás seguro?", message = "", onConfirm 
     cancelBtn.addEventListener('click', onCancel);
 }
 window.showConfirmModal = showConfirmModal;
+
+// Modal custom para mostrar nueva contraseña
+function showPasswordModal(password) {
+    const modal = document.getElementById('password-modal');
+    const input = document.getElementById('password-modal-input');
+    const copyBtn = document.getElementById('password-modal-copy');
+    const closeBtn = document.getElementById('password-modal-close');
+    input.value = password;
+    modal.classList.remove('hidden');
+    // Selecciona el texto automáticamente
+    input.select();
+    // Copiar al portapapeles
+    copyBtn.onclick = () => {
+        input.select();
+        document.execCommand('copy');
+        copyBtn.textContent = '¡Copiado!';
+        setTimeout(() => { copyBtn.textContent = 'Copiar'; }, 1500);
+    };
+    // Cerrar modal
+    closeBtn.onclick = () => {
+        modal.classList.add('hidden');
+    };
+    // Cerrar con Escape
+    modal.onkeydown = (e) => {
+        if (e.key === 'Escape') {
+            modal.classList.add('hidden');
+        }
+    };
+    // Permitir cerrar haciendo click fuera del modal
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+    };
+}
