@@ -446,14 +446,18 @@ async function getCurrentUser() {
         const payload = JSON.parse(atob(token.split('.')[1]));
         // Si el JWT trae nombre y apellido, úsalos
         if (payload.first_name && payload.last_name) {
-            return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name, role: payload.role };
+            return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name, role: payload.role || 'user' };
         }
         // Si el rol viene en el JWT y no es admin, NO intentes fetch a /api/admin/users
         if (payload.role && payload.role !== 'admin') {
             return { id: payload.sub, email: payload.email, role: payload.role };
         }
-        // Si no hay nombre/apellido y el rol es admin o no viene, intenta consultar a la API
-        if (payload.role === 'admin' || !payload.role) {
+        // Si el rol no viene, asume 'user' por defecto
+        if (!payload.role) {
+            return { id: payload.sub, email: payload.email, role: 'user' };
+        }
+        // Si el rol es admin, consulta a la API
+        if (payload.role === 'admin') {
             const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
             if (response.ok) {
                 const users = await response.json();
@@ -467,7 +471,7 @@ async function getCurrentUser() {
             }
         }
         // Si no está en la lista de admins, retorna lo que haya en el JWT
-        return { id: payload.sub, email: payload.email };
+        return { id: payload.sub, email: payload.email, role: payload.role || 'user' };
     } catch {
         return null;
     }
