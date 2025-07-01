@@ -223,7 +223,8 @@ async function handleAppPage() {
     // Al enviar el formulario, limpia el monto para enviar solo el número
     const expenseForm = document.getElementById('expense-form');
     if (expenseForm) {
-        expenseForm.addEventListener('submit', (e) => {
+        expenseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             const amountInput = document.getElementById('amount');
             if (amountInput) {
                 let raw = amountInput.value.replace(/[^\d]/g, '');
@@ -1310,11 +1311,8 @@ function setupEventListeners() {
                 month,
                 comments
             };
-            if (type === 'expense') {
-                transactionData.category_id = categoryId; // UUID como string
-            } else {
-                transactionData.category_id = null;
-            }
+            // Siempre enviar category_id si hay selección
+            transactionData.category_id = categoryId || null;
             try {
                 await addTransaction(transactionData);
                 expenseForm.reset();
