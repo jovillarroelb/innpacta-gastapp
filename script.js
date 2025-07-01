@@ -648,66 +648,102 @@ function renderCharts(data) {
     console.log('📊 Renderizando gráficos con datos:', data);
     // Gráfico de gastos por categoría
     const expensesCtx = document.getElementById('expenses-chart');
+    const expensesContainer = expensesCtx?.parentElement;
     if (expensesCtx) {
         if (expensesChartInstance) {
             expensesChartInstance.destroy();
         }
         if (Object.keys(data.expenses).length > 0) {
             expensesChartInstance = new Chart(expensesCtx, {
-        type: 'doughnut',
-        data: {
+                type: 'doughnut',
+                data: {
                     labels: Object.keys(data.expenses),
-            datasets: [{
+                    datasets: [{
                         data: Object.values(data.expenses),
-                backgroundColor: [
+                        backgroundColor: [
                             '#ef4444', '#f97316', '#eab308', '#84cc16',
                             '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'
                         ]
-            }]
-        },
-        options: {
+                    }]
+                },
+                options: {
                     responsive: true,
                     maintainAspectRatio: false,
-            plugins: {
+                    plugins: {
                         legend: { position: 'bottom' }
+                    }
+                }
+            });
+            expensesCtx.style.display = '';
+            if (expensesContainer) {
+                const emptyMsg = expensesContainer.querySelector('.empty-expenses-msg');
+                if (emptyMsg) emptyMsg.remove();
             }
-        }
-    });
         } else {
             expensesCtx.getContext('2d').clearRect(0, 0, expensesCtx.width, expensesCtx.height);
             expensesChartInstance = null;
+            expensesCtx.style.display = 'none';
+            if (expensesContainer && !expensesContainer.querySelector('.empty-expenses-msg')) {
+                expensesContainer.insertAdjacentHTML('beforeend', `
+                    <div class="empty-expenses-msg flex flex-col items-center justify-center py-8">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-cup-hot text-yellow-500 mb-2" viewBox="0 0 16 16">
+                          <path d="M.5 6a.5.5 0 0 1 .5-.5h12a.5.5 0 0 1 .5.5v2a5.5 5.5 0 0 1-11 0V6Zm13 0h1a.5.5 0 0 1 .5.5v.5a2.5 2.5 0 0 1-2.5 2.5h-.5a.5.5 0 0 1 0-1h.5A1.5 1.5 0 0 0 14 7V6.5a.5.5 0 0 1 .5-.5Z"/>
+                          <path d="M4.5 1a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 4.5 1Zm3 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 7.5 1Zm3 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2a.5.5 0 0 1 .5-.5Z"/>
+                        </svg>
+                        <span class="text-yellow-600 font-semibold">No hay información gastos registrados.</span>
+                    </div>
+                `);
+            }
         }
     }
     // Gráfico de ingresos por categoría
     const incomeCtx = document.getElementById('income-chart');
+    const incomeContainer = incomeCtx?.parentElement;
     if (incomeCtx) {
         if (incomeChartInstance) {
             incomeChartInstance.destroy();
         }
         if (Object.keys(data.income).length > 0) {
             incomeChartInstance = new Chart(incomeCtx, {
-        type: 'doughnut',
-        data: {
+                type: 'doughnut',
+                data: {
                     labels: Object.keys(data.income),
-            datasets: [{
+                    datasets: [{
                         data: Object.values(data.income),
-                backgroundColor: [
+                        backgroundColor: [
                             '#10b981', '#059669', '#047857', '#065f46',
                             '#064e3b', '#022c22', '#042f2e', '#0f766e'
                         ]
-            }]
-        },
-        options: {
+                    }]
+                },
+                options: {
                     responsive: true,
                     maintainAspectRatio: false,
-            plugins: {
+                    plugins: {
                         legend: { position: 'bottom' }
                     }
                 }
             });
+            incomeCtx.style.display = '';
+            if (incomeContainer) {
+                const emptyMsg = incomeContainer.querySelector('.empty-income-msg');
+                if (emptyMsg) emptyMsg.remove();
+            }
         } else {
             incomeCtx.getContext('2d').clearRect(0, 0, incomeCtx.width, incomeCtx.height);
             incomeChartInstance = null;
+            incomeCtx.style.display = 'none';
+            if (incomeContainer && !incomeContainer.querySelector('.empty-income-msg')) {
+                incomeContainer.insertAdjacentHTML('beforeend', `
+                    <div class="empty-income-msg flex flex-col items-center justify-center py-8">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-cup-hot text-yellow-500 mb-2" viewBox="0 0 16 16">
+                          <path d="M.5 6a.5.5 0 0 1 .5-.5h12a.5.5 0 0 1 .5.5v2a5.5 5.5 0 0 1-11 0V6Zm13 0h1a.5.5 0 0 1 .5.5v.5a2.5 2.5 0 0 1-2.5 2.5h-.5a.5.5 0 0 1 0-1h.5A1.5 1.5 0 0 0 14 7V6.5a.5.5 0 0 1 .5-.5Z"/>
+                          <path d="M4.5 1a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 4.5 1Zm3 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 7.5 1Zm3 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2a.5.5 0 0 1 .5-.5Z"/>
+                        </svg>
+                        <span class="text-yellow-600 font-semibold">No hay información ingresos registrados.</span>
+                    </div>
+                `);
+            }
         }
     }
 }
