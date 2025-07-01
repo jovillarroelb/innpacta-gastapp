@@ -142,20 +142,28 @@ setupUsersTableListener = function() {
             }
         }
         if (e.target.classList.contains('delete-user-btn')) {
-            if (!confirm('¿Seguro que deseas eliminar este usuario? Esta acción es irreversible.')) return;
-            e.target.disabled = true;
-            try {
-                const res = await fetch(`/api/admin/users/${userId}`, {
-                    method: 'DELETE',
-                    headers: authHeaders
-                });
-                if (!res.ok) throw new Error('Error al eliminar usuario');
-                showNotification('Usuario eliminado', 'success');
-                // Refrescar tabla tras eliminar
-                fetchAllAdminData();
-            } catch (err) {
-                showNotification('Error al eliminar usuario', 'error');
-            }
+            // Modal de confirmación custom
+            showConfirmModal({
+                title: 'Eliminar usuario',
+                message: '¿Seguro que deseas eliminar este usuario? Esta acción es irreversible.',
+                onConfirm: async () => {
+                    e.target.disabled = true;
+                    try {
+                        const res = await fetch(`/api/admin/users/${userId}`, {
+                            method: 'DELETE',
+                            headers: authHeaders
+                        });
+                        if (!res.ok) throw new Error('Error al eliminar usuario');
+                        showNotification('Usuario eliminado', 'success');
+                        fetchAllAdminData();
+                    } catch (err) {
+                        showNotification('Error al eliminar usuario', 'error');
+                    } finally {
+                        e.target.disabled = false;
+                    }
+                }
+            });
+            return;
         }
     });
 }
