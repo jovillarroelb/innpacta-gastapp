@@ -84,6 +84,9 @@ async function initializeFooter() {
 
 // Mejora en la inicialización de la app
 document.addEventListener('DOMContentLoaded', () => {
+    // Forzar el título principal siempre
+    const mainTitle = document.getElementById('main-title');
+    if (mainTitle) mainTitle.textContent = 'Registro de Gastos/Ingresos';
     // Forzar ocultar todos los modales al cargar (solo si existen)
     ['category-modal', 'reassign-modal', 'edit-transaction-modal'].forEach(id => {
         const el = document.getElementById(id);
@@ -1236,7 +1239,7 @@ async function initializeApp() {
         const welcomeMessage = document.getElementById('welcome-message');
         const userAvatar = document.getElementById('user-avatar');
         
-        if (mainTitle) mainTitle.textContent = 'Dashboard Financiero';
+        if (mainTitle) mainTitle.textContent = 'Registro de Gastos/Ingresos';
         if (welcomeMessage) {
             let nombre = currentUser.first_name || '';
             if (nombre) {
