@@ -1225,7 +1225,6 @@ async function initializeApp() {
         const welcomeMessage = document.getElementById('welcome-message');
         const userAvatar = document.getElementById('user-avatar');
         
-        if (mainTitle) mainTitle.textContent = 'Gastapp : Control de Finanzas';
         if (welcomeMessage) {
             let nombre = currentUser.first_name || '';
             if (nombre) {
