@@ -84,7 +84,10 @@ async function adminOnly(req, res, next) {
 app.get('/api/version', (req, res) => {
     let version = '1.0.0';
     try {
-        version = fs.readFileSync('VERSION.md', 'utf8').trim();
+        const versionFile = fs.readFileSync('VERSION.md', 'utf8');
+        // Busca la línea que contiene 'Versión Actual:' y extrae el número
+        const match = versionFile.match(/Versión Actual:\s*([\d.]+)/);
+        if (match) version = match[1];
     } catch {}
     res.json({ version });
 });
