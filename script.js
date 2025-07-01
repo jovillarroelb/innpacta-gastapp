@@ -1730,8 +1730,11 @@ if (profileForm) {
         const payload = JSON.parse(atob(token.split('.')[1]));
         const body = { firstName, lastName };
         if (password) body.password = password;
+        // Si el usuario es admin, usa el endpoint admin. Si no, usa uno seguro (por ejemplo, /api/profile)
+        const isAdmin = payload.role === 'admin';
+        const url = isAdmin ? `/api/admin/users/${payload.sub}` : '/api/profile';
         try {
-            const response = await fetch(`/api/admin/users/${payload.sub}`, {
+            const response = await fetch(url, {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,

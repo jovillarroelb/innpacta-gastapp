@@ -559,22 +559,9 @@ app.patch('/api/admin/users/:id/role', authMiddleware, adminOnly, async (req, re
 });
 
 // Permitir que un usuario actualice su propio perfil (nombre, apellido, contraseña)
-app.patch('/api/admin/users/:id', authMiddleware, async (req, res) => {
-    const { id } = req.params;
+app.patch('/api/profile', authMiddleware, async (req, res) => {
+    const userId = req.user.id;
     const { firstName, lastName, password } = req.body;
-    // Solo el propio usuario o un admin puede editar
-    if (req.user.id !== id) {
-        // Verificar si es admin
-        const client = await pool.connect();
-        try {
-            const userResult = await client.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
-            if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
-                return res.status(403).json({ message: 'No autorizado.' });
-            }
-        } finally {
-            client.release();
-        }
-    }
     try {
         const client = await pool.connect();
         const updates = [];
@@ -591,7 +578,7 @@ app.patch('/api/admin/users/:id', authMiddleware, async (req, res) => {
             client.release();
             return res.status(400).json({ message: 'Nada que actualizar.' });
         }
-        values.push(id);
+        values.push(userId);
         const result = await client.query(
             `UPDATE users SET ${updates.join(', ')} WHERE id = $${idx} RETURNING id, first_name, last_name, email, role`,
             values
@@ -599,7 +586,7 @@ app.patch('/api/admin/users/:id', authMiddleware, async (req, res) => {
         client.release();
         res.status(200).json(result.rows[0]);
     } catch (error) {
-        console.error('Error al actualizar perfil:', error);
+        console.error('Error al actualizar perfil (usuario normal):', error);
         res.status(500).json({ message: 'Error al actualizar perfil.' });
     }
 });
