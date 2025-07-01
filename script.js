@@ -86,7 +86,7 @@ async function initializeFooter() {
 document.addEventListener('DOMContentLoaded', () => {
     // Forzar el título principal siempre
     const mainTitle = document.getElementById('main-title');
-    if (mainTitle) mainTitle.textContent = 'Registro de Gastos/Ingresos';
+    if (mainTitle) mainTitle.textContent = 'Gastapp : Control de Finanzas';
     // Forzar ocultar todos los modales al cargar (solo si existen)
     ['category-modal', 'reassign-modal', 'edit-transaction-modal'].forEach(id => {
         const el = document.getElementById(id);
@@ -480,34 +480,20 @@ async function getCurrentUser() {
     if (!token) return null;
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
+        // Si el rol es admin, siempre retorna admin
+        if (payload.role === 'admin') {
+            return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name, role: 'admin' };
+        }
         // Si el JWT trae nombre y apellido, úsalos
         if (payload.first_name && payload.last_name) {
             return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name, role: payload.role || 'user' };
         }
-        // Si el rol viene en el JWT y no es admin, NO intentes fetch a /api/admin/users
+        // Si el rol viene en el JWT y no es admin
         if (payload.role && payload.role !== 'admin') {
             return { id: payload.sub, email: payload.email, role: payload.role };
         }
         // Si el rol no viene, asume 'user' por defecto
-        if (!payload.role) {
-            return { id: payload.sub, email: payload.email, role: 'user' };
-        }
-        // Si el rol es admin, consulta a la API
-        if (payload.role === 'admin') {
-            const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.ok) {
-                const users = await response.json();
-                if (Array.isArray(users)) {
-                    const user = users.find(u => u.id == payload.sub || u.email === payload.email);
-                    if (user) {
-                        user.role = 'admin';
-                        return user;
-                    }
-                }
-            }
-        }
-        // Si no está en la lista de admins, retorna lo que haya en el JWT
-        return { id: payload.sub, email: payload.email, role: payload.role || 'user' };
+        return { id: payload.sub, email: payload.email, role: 'user' };
     } catch {
         return null;
     }
@@ -1239,7 +1225,7 @@ async function initializeApp() {
         const welcomeMessage = document.getElementById('welcome-message');
         const userAvatar = document.getElementById('user-avatar');
         
-        if (mainTitle) mainTitle.textContent = 'Registro de Gastos/Ingresos';
+        if (mainTitle) mainTitle.textContent = 'Gastapp : Control de Finanzas';
         if (welcomeMessage) {
             let nombre = currentUser.first_name || '';
             if (nombre) {
@@ -1828,13 +1814,15 @@ if (closeProfileModalBtn) {
     });
 }
 
-// Mostrar menú admin si el usuario es admin (por JWT o por BBDD)
+// Mostrar menú admin si el usuario es admin (por JWT)
 async function showAdminMenuIfNeeded() {
     const user = await getCurrentUser();
+    const adminMenu = document.getElementById('admin-menu-item');
+    if (!adminMenu) return;
     if (user && user.role === 'admin') {
-        document.getElementById('admin-menu-item').style.display = 'block';
+        adminMenu.style.display = 'block';
     } else {
-        document.getElementById('admin-menu-item').style.display = 'none';
+        adminMenu.style.display = 'none';
     }
 }
 // Llama a esta función en la inicialización y después de login
