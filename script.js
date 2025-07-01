@@ -448,20 +448,21 @@ async function getCurrentUser() {
         if (payload.first_name && payload.last_name) {
             return { id: payload.sub, email: payload.email, first_name: payload.first_name, last_name: payload.last_name, role: payload.role };
         }
-        // Si el rol viene en el JWT y no es admin, no intentes fetch a /api/admin/users
+        // Si el rol viene en el JWT y no es admin, NO intentes fetch a /api/admin/users
         if (payload.role && payload.role !== 'admin') {
             return { id: payload.sub, email: payload.email, role: payload.role };
         }
-        // Si no hay nombre/apellido, intenta consultar a la API (puede ser admin sin rol en JWT)
-        const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (response.ok) {
-            const users = await response.json();
-            if (Array.isArray(users)) {
-                const user = users.find(u => u.id == payload.sub || u.email === payload.email);
-                if (user) {
-                    // Si es admin, retorna todos los datos y marca como admin
-                    user.role = 'admin';
-                    return user;
+        // Si no hay nombre/apellido y el rol es admin o no viene, intenta consultar a la API
+        if (payload.role === 'admin' || !payload.role) {
+            const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.ok) {
+                const users = await response.json();
+                if (Array.isArray(users)) {
+                    const user = users.find(u => u.id == payload.sub || u.email === payload.email);
+                    if (user) {
+                        user.role = 'admin';
+                        return user;
+                    }
                 }
             }
         }
