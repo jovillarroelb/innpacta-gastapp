@@ -113,10 +113,13 @@ app.post('/auth/register', async (req, res) => {
             }
             // Hashea la contraseña
             const hashedPassword = await bcrypt.hash(password, 10);
+            // Normalización Unicode antes de guardar
+            const normFirstName = firstName.normalize('NFC');
+            const normLastName = lastName.normalize('NFC');
             // Crea el usuario con rol 'user' por defecto
             const userResult = await client.query(
                 'INSERT INTO users (first_name, last_name, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, first_name, last_name, role',
-                [firstName, lastName, email, hashedPassword, 'user']
+                [normFirstName, normLastName, email, hashedPassword, 'user']
             );
             const user = userResult.rows[0];
             const userId = user.id;
@@ -584,8 +587,8 @@ app.patch('/api/profile', authMiddleware, async (req, res) => {
         const updates = [];
         const values = [];
         let idx = 1;
-        if (firstName) { updates.push(`first_name = $${idx++}`); values.push(firstName); }
-        if (lastName) { updates.push(`last_name = $${idx++}`); values.push(lastName); }
+        if (firstName) { updates.push(`first_name = $${idx++}`); values.push(firstName.normalize('NFC')); }
+        if (lastName) { updates.push(`last_name = $${idx++}`); values.push(lastName.normalize('NFC')); }
         if (password) {
             const hashed = await bcrypt.hash(password, 10);
             updates.push(`password = $${idx++}`);
