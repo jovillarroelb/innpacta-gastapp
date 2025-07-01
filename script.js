@@ -994,31 +994,36 @@ function reassignCategory(transactionId) {
 
 // Función para eliminar transacción
 async function deleteTransaction(transactionId) {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta transacción?')) return;
-    const token = localStorage.getItem('jwt_token');
-    if (!token) {
-        showNotification('No hay sesión activa', 'error');
-        return;
-    }
-    try {
-        const response = await fetch('/api/transactions', {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id: transactionId, user_id: currentUser.id })
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+    showConfirmModal({
+        title: "Eliminar transacción",
+        message: "¿Seguro que deseas eliminar esta transacción? Esta acción no se puede deshacer.",
+        onConfirm: async () => {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) {
+                showNotification('No hay sesión activa', 'error');
+                return;
+            }
+            try {
+                const response = await fetch('/api/transactions', {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: transactionId, user_id: currentUser.id })
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                showNotification('Transacción eliminada', 'success');
+                await refreshAllMonthlyUI();
+                await updateMonthlyTotals();
+            } catch (error) {
+                showNotification('Error al eliminar transacción', 'error');
+                console.error('[deleteTransaction] Error:', error);
+            }
         }
-        showNotification('Transacción eliminada', 'success');
-        await refreshAllMonthlyUI();
-        await updateMonthlyTotals();
-    } catch (error) {
-        showNotification('Error al eliminar transacción', 'error');
-        console.error('[deleteTransaction] Error:', error);
-    }
+    });
 }
 
 // Función para agregar transacción
