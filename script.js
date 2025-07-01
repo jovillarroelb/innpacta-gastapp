@@ -1333,42 +1333,6 @@ function setupEventListeners() {
         console.log('❌ Botón de gestión de categorías no encontrado');
     }
     
-    // Controles de navegación de meses
-    const prevMonthBtn = document.getElementById('prev-month-btn');
-    const nextMonthBtn = document.getElementById('next-month-btn');
-    
-    if (prevMonthBtn) {
-        console.log('✅ Botón de mes anterior encontrado');
-        prevMonthBtn.addEventListener('click', async () => {
-            if (currentMonth === 0) {
-                currentMonth = 11;
-                currentYear--;
-            } else {
-                currentMonth--;
-            }
-            updateMonthDisplay();
-            await refreshAllMonthlyUI();
-        });
-    } else {
-        console.log('❌ Botón de mes anterior no encontrado');
-    }
-    
-    if (nextMonthBtn) {
-        console.log('✅ Botón de mes siguiente encontrado');
-        nextMonthBtn.addEventListener('click', async () => {
-            if (currentMonth === 11) {
-                currentMonth = 0;
-                currentYear++;
-            } else {
-                currentMonth++;
-            }
-            updateMonthDisplay();
-            await refreshAllMonthlyUI();
-        });
-    } else {
-        console.log('❌ Botón de mes siguiente no encontrado');
-    }
-    
     console.log('✅ Event listeners configurados');
 }
 
@@ -1819,13 +1783,12 @@ async function showAdminMenuIfNeeded() {
     const user = await getCurrentUser();
     const adminMenu = document.getElementById('admin-menu-item');
     if (!adminMenu) return;
-    if (user && user.role === 'admin') {
+    if (user && user.role && user.role.toLowerCase() === 'admin') {
         adminMenu.style.display = 'block';
     } else {
         adminMenu.style.display = 'none';
     }
 }
-// Llama a esta función en la inicialización y después de login
 showAdminMenuIfNeeded();
 
 function showConfirmModal({ title = "¿Estás seguro?", message = "", onConfirm }) {
