@@ -128,7 +128,7 @@ app.post('/auth/register', async (req, res) => {
             for (let m = 1; m <= 12; m++) {
                 const month = `${year}-${String(m).padStart(2, '0')}`;
                 budgetInserts.push(client.query(
-                    'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3)',
+                    'INSERT INTO budgets (user_id, amount, month) VALUES ($1, $2, $3) ON CONFLICT (user_id, month) DO NOTHING',
                     [userId, 0, month]
                 ));
             }
