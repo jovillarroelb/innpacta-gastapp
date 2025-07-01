@@ -1327,7 +1327,6 @@ function setupEventListeners() {
     if (logoutBtn) {
         console.log('✅ Botón de logout encontrado');
         logoutBtn.addEventListener('click', () => {
-            console.log('🔄 Click en botón de logout');
             logout();
         });
     } else {
@@ -1823,15 +1822,6 @@ const closeProfileModalBtn = document.getElementById('close-profile-modal-btn');
 if (closeProfileModalBtn) {
     closeProfileModalBtn.addEventListener('click', () => {
         document.getElementById('profile-modal').classList.add('hidden');
-    });
-}
-
-// Logout desde el modal
-const logoutBtn = document.getElementById('logout-btn');
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-        localStorage.removeItem('jwt_token');
-        window.location.reload();
     });
 }
 
