@@ -571,6 +571,14 @@ app.patch('/api/admin/users/:id/role', authMiddleware, adminOnly, async (req, re
 app.patch('/api/profile', authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { firstName, lastName, password } = req.body;
+    // Validación de nombre y apellido: solo letras Unicode, espacios y guiones
+    const nameRegex = /^[\p{L} .'-]+$/u;
+    if (firstName && !nameRegex.test(firstName)) {
+        return res.status(400).json({ message: 'El nombre solo puede contener letras, espacios, tildes y caracteres internacionales.' });
+    }
+    if (lastName && !nameRegex.test(lastName)) {
+        return res.status(400).json({ message: 'El apellido solo puede contener letras, espacios, tildes y caracteres internacionales.' });
+    }
     try {
         const client = await pool.connect();
         const updates = [];
