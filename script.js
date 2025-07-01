@@ -1570,13 +1570,34 @@ if (editAnnualBudgetsBtn && editAnnualBudgetsModal && editAnnualBudgetsForm) {
             const monthId = `${selectedYear}-${String(i+1).padStart(2, '0')}`;
             // Si no hay presupuesto, mostrar 0
             const presupuesto = budgets.find(b => b.month === monthId)?.amount ?? 0;
+            // Formatear como CLP
+            const formatted = `$${parseInt(presupuesto, 10).toLocaleString('es-CL')}`;
             editAnnualBudgetsForm.innerHTML += `
                 <div class="flex flex-col">
                     <label class="text-sm font-medium text-gray-700 mb-1">${meses[i]}</label>
-                    <input type="number" min="0" step="1000" name="${monthId}" value="${presupuesto}" class="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500" required />
+                    <input type="text" min="0" name="${monthId}" value="${formatted}" class="annual-budget-input px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500" required />
                 </div>
             `;
         }
+        // Formateo automático en inputs de presupuesto anual
+        setTimeout(() => {
+            document.querySelectorAll('.annual-budget-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    let value = e.target.value.replace(/[^\d]/g, '');
+                    if (!value) {
+                        e.target.value = '';
+                        return;
+                    }
+                    value = parseInt(value, 10).toLocaleString('es-CL');
+                    e.target.value = `$${value}`;
+                });
+                input.addEventListener('focus', (e) => {
+                    setTimeout(() => {
+                        e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+                    }, 0);
+                });
+            });
+        }, 100);
         // Cierre con ESC y click fuera
         setupModalCloseEvents('edit-annual-budgets-modal', () => {
             editAnnualBudgetsModal.classList.add('hidden');
@@ -1595,7 +1616,9 @@ if (editAnnualBudgetsForm) {
         const formData = new FormData(editAnnualBudgetsForm);
         const updates = [];
         for (let [month, amount] of formData.entries()) {
-            updates.push({ month, amount: parseInt(amount, 10) });
+            // Limpiar formato para enviar solo el número
+            let raw = String(amount).replace(/[^\d]/g, '');
+            updates.push({ month, amount: parseInt(raw, 10) });
         }
         // Actualizar presupuestos en Supabase
         const token = localStorage.getItem('jwt_token');
