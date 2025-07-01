@@ -599,20 +599,20 @@ function renderTransactionList(transactions) {
             ? '<span class="font-bold text-yellow-500">Sin categoría</span>'
             : `<span class="text-gray-500">${transaction.category_name}</span>`;
         return `
-        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg mb-3">
             <div class="flex-1">
                 <h4 class="font-semibold text-gray-800">${transaction.description}</h4>
                 <p class="text-sm">${categoriaHtml}</p>
                 ${transaction.comments ? `<p class="text-xs text-gray-400 mt-1">${transaction.comments}</p>` : ''}
             </div>
-            <div class="text-right flex items-center">
-                <div class="mr-3">
+            <div class="flex flex-col items-end sm:items-center sm:flex-row sm:text-right mt-2 sm:mt-0">
+                <div class="mr-0 sm:mr-3">
                     <p class="font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
                         ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
                     </p>
                     <p class="text-xs text-gray-400">${new Date(transaction.created_at).toLocaleDateString()}</p>
                 </div>
-                <div class="flex space-x-1">
+                <div class="flex space-x-1 mt-2 sm:mt-0">
                     <button class="btn-action btn-edit" onclick="editTransaction('${transaction.id}')">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
