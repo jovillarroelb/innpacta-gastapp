@@ -199,3 +199,31 @@ function showNotification(message, type = 'info', duration = 3000) {
         setTimeout(() => document.body.removeChild(notification), 300);
     }, duration);
 }
+
+function showConfirmModal({ title = "¿Estás seguro?", message = "", onConfirm }) {
+    const modal = document.getElementById('confirm-modal');
+    document.getElementById('confirm-modal-title').textContent = title;
+    document.getElementById('confirm-modal-message').textContent = message;
+    modal.classList.remove('hidden');
+
+    const acceptBtn = document.getElementById('confirm-modal-accept');
+    const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+    const cleanup = () => {
+        modal.classList.add('hidden');
+        acceptBtn.removeEventListener('click', onAccept);
+        cancelBtn.removeEventListener('click', onCancel);
+    };
+
+    function onAccept() {
+        cleanup();
+        if (typeof onConfirm === 'function') onConfirm();
+    }
+    function onCancel() {
+        cleanup();
+    }
+
+    acceptBtn.addEventListener('click', onAccept);
+    cancelBtn.addEventListener('click', onCancel);
+}
+window.showConfirmModal = showConfirmModal;
