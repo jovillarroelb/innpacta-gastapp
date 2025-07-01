@@ -1780,12 +1780,25 @@ if (closeProfileModalBtn) {
 // Mostrar menú admin si el usuario es admin (por JWT)
 async function showAdminMenuIfNeeded() {
     const user = await getCurrentUser();
-    const adminMenu = document.getElementById('admin-menu-item');
+    let adminMenu = document.getElementById('admin-menu-item');
+    // Si no existe, lo agrego dinámicamente al sidebar
+    if (!adminMenu) {
+        const sidebarNav = document.getElementById('sidebar-nav');
+        if (sidebarNav) {
+            adminMenu = document.createElement('li');
+            adminMenu.id = 'admin-menu-item';
+            adminMenu.style.display = 'none';
+            adminMenu.innerHTML = `<a href="admin.html" title="Administración de usuarios" class="sidebar-icon p-3 rounded-lg"><i class="bi bi-gear text-2xl"></i></a>`;
+            sidebarNav.appendChild(adminMenu);
+        }
+    }
     if (!adminMenu) return;
     if (user && user.role && user.role.toLowerCase() === 'admin') {
         adminMenu.style.display = 'block';
+        console.log('🔒 Menú admin visible para usuario admin');
     } else {
         adminMenu.style.display = 'none';
+        console.log('🔒 Menú admin oculto (no admin)');
     }
 }
 showAdminMenuIfNeeded();
