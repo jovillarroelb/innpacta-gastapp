@@ -1,3 +1,5 @@
+Versión Actual: 1.0.1
+
 # Control de Versiones - App Control Financiero
 
 ## Versión Actual: 1.0.1
