@@ -107,10 +107,11 @@ app.post('/auth/register', async (req, res) => {
             const hashedPassword = await bcrypt.hash(password, 10);
             // Crea el usuario con rol 'user' por defecto
             const userResult = await client.query(
-                'INSERT INTO users (first_name, last_name, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+                'INSERT INTO users (first_name, last_name, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, first_name, last_name',
                 [firstName, lastName, email, hashedPassword, 'user']
             );
-            const userId = userResult.rows[0].id;
+            const user = userResult.rows[0];
+            const userId = user.id;
             // Poblar categorías por defecto
             await client.query(
                 `INSERT INTO categories (name, user_id) VALUES
@@ -133,9 +134,9 @@ app.post('/auth/register', async (req, res) => {
                 ));
             }
             await Promise.all(budgetInserts);
-            // Generar JWT
+            // Generar JWT con nombre y apellido
             const token = jwt.sign(
-                { sub: userId, email },
+                { sub: userId, email, first_name: user.first_name, last_name: user.last_name },
                 process.env.JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -157,7 +158,7 @@ app.post('/auth/login', async (req, res) => {
     try {
         const client = await pool.connect();
         try {
-            const userResult = await client.query('SELECT id, password FROM users WHERE email = $1', [email]);
+            const userResult = await client.query('SELECT id, password, first_name, last_name FROM users WHERE email = $1', [email]);
             if (userResult.rows.length === 0) {
                 return res.status(401).json({ message: 'Credenciales inválidas.' });
             }
@@ -166,9 +167,9 @@ app.post('/auth/login', async (req, res) => {
             if (!valid) {
                 return res.status(401).json({ message: 'Credenciales inválidas.' });
             }
-            // Generar JWT
+            // Generar JWT con nombre y apellido
             const token = jwt.sign(
-                { sub: user.id, email },
+                { sub: user.id, email, first_name: user.first_name, last_name: user.last_name },
                 process.env.JWT_SECRET,
                 { expiresIn: '7d' }
             );
