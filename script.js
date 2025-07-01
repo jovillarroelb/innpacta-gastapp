@@ -847,6 +847,7 @@ async function deleteCategory(categoryId) {
                 if (!res.ok) throw new Error('Error al eliminar categoría');
                 showNotification('Categoría eliminada', 'success');
                 await refreshCategoriesUI();
+                if (typeof loadCategoriesList === 'function') await loadCategoriesList();
             } catch (err) {
                 showNotification('No se pudo eliminar la categoría', 'error');
             }
